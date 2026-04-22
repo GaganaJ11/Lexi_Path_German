@@ -1,0 +1,19 @@
+# Main Frameworks
+langchain-core==1.2.28
+langgraph==1.1.6
+langchain_nvidia_ai_endpoints==0.1.0
+
+# Model Connectors & Engines
+langchain-huggingface==1.2.1
+sentence-transformers==5.4.0
+langchain-ollama==1.1.0
+ollama==0.6.1
+openai==1.99.9
+
+# Database & Vector Store
+langchain-postgres==0.0.17
+psycopg-binary==3.3.3
+pgvector==0.3.6
+
+# Utilities
+python-dotenv==1.2.2
