@@ -1,2 +1,6 @@
-requests
-numpy
+# Core runtime dependency
+requests>=2.31.0
+
+# Optional data-prep dependencies for germankb.py
+datasets>=2.19.0
+langchain-text-splitters>=0.2.2

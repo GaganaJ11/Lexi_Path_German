@@ -200,7 +200,7 @@ def format_bundle(rule_documents, example_documents, topic: str, grammar_point: 
     }
 
 
-def retrieve_context_bundle(query: str, user_level: str, topic_hint: str = None, k: int = 4):
+def retrieve_context_bundle(query: str, user_level: str, topic_hint: str = None, k: int = 5):
     topic = topic_hint or infer_topic(query)
     grammar_point = infer_grammar_point(query, topic)
 

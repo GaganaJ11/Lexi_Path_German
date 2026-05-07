@@ -4,8 +4,15 @@ import os
 import hashlib
 from typing import List, Dict, Optional
 
-from datasets import load_dataset
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+try:
+    from datasets import load_dataset
+except ImportError:
+    load_dataset = None
+
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    RecursiveCharacterTextSplitter = None
 
 
 
@@ -211,17 +218,24 @@ def infer_skill(text: str) -> str:
 # =========================================================
 # CHUNKING
 # =========================================================
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=CHUNK_SIZE,
-    chunk_overlap=CHUNK_OVERLAP,
-    separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""]
-)
+if RecursiveCharacterTextSplitter is None:
+    text_splitter = None
+else:
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""]
+    )
 
 
 def chunk_text(text: str) -> List[str]:
     text = normalize_text(text)
     if not text:
         return []
+    if text_splitter is None:
+        raise RuntimeError(
+            "langchain-text-splitters is required for germankb.py. Install project extras first."
+        )
     return text_splitter.split_text(text)
 
 
@@ -443,6 +457,13 @@ def export_jsonl(records: List[Dict], filename: str) -> None:
 # MAIN
 # =========================================================
 def main():
+    if load_dataset is None:
+        raise RuntimeError("datasets is required for germankb.py. Install project extras first.")
+    if RecursiveCharacterTextSplitter is None:
+        raise RuntimeError(
+            "langchain-text-splitters is required for germankb.py. Install project extras first."
+        )
+
     all_records = []
 
     print("Loading datasets...")

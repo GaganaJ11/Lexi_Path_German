@@ -1,373 +1,513 @@
-﻿import re
-from typing import Dict
+import json
+from typing import Dict, List
 
-from engine import call_chat
+from engine import call_chat, safe_json_load
+from prompts import build_diagnostic_intro_prompt
+from utils import average_score, is_non_answer
 
-DIAGNOSTIC_TASKS = [
-    # A1
-    {
-        "id": 1,
-        "level": "A1",
-        "topic": "Articles",
-        "grammar_point": "indefinite_articles_ein_eine_einen",
-        "prompt_goal": "Check whether the learner can produce a simple accusative noun phrase with an indefinite article.",
-        "criteria": "The answer should clearly show an accusative masculine phrase such as 'einen Apfel'.",
-        "example_answer": "Der Mann isst einen Apfel.",
-    },
-    {
-        "id": 2,
-        "level": "A1",
-        "topic": "Negation",
-        "grammar_point": "negation_kein",
-        "prompt_goal": "Check whether the learner can negate a noun phrase with 'kein'.",
-        "criteria": "The answer should use 'kein' or an inflected form like 'keine' correctly.",
-        "example_answer": "Nein, ich habe kein Auto.",
-    },
-    {
-        "id": 3,
-        "level": "A1",
-        "topic": "Verb Conjugation",
-        "grammar_point": "present_tense_basic_verbs",
-        "prompt_goal": "Check whether the learner can write one simple present-tense sentence about themselves.",
-        "criteria": "The answer should contain a clear present-tense sentence such as 'Ich wohne in Berlin.'",
-        "example_answer": "Ich wohne in Berlin.",
-    },
+LEVEL_ORDER = ["Pre-A1", "A1", "A2", "B1"]
+MAX_SCORE_PER_ATTEMPT = 2
+MIN_ATTEMPTS = 3
+MAX_ATTEMPTS = 6
 
-    # A2
-    {
-        "id": 4,
-        "level": "A2",
-        "topic": "Verb Conjugation",
-        "grammar_point": "perfect_tense_basics",
-        "prompt_goal": "Check whether the learner can describe a completed past action with Perfekt.",
-        "criteria": "The answer should use a helper verb and a past participle appropriately.",
-        "example_answer": "Ich habe gestern Deutsch gelernt.",
-    },
-    {
-        "id": 5,
-        "level": "A2",
-        "topic": "Cases",
-        "grammar_point": "accusative_with_movement",
-        "prompt_goal": "Check whether the learner can use a two-way preposition with movement and accusative.",
-        "criteria": "The answer should show movement toward a destination, such as 'auf den Tisch'.",
-        "example_answer": "Ich lege das Buch auf den Tisch.",
-    },
-    {
-        "id": 6,
-        "level": "A2",
-        "topic": "Grammar",
-        "grammar_point": "comparatives_basics",
-        "prompt_goal": "Check whether the learner can compare two things with a comparative and 'als'.",
-        "criteria": "The answer should include a comparative form plus 'als'.",
-        "example_answer": "Ein Auto ist schneller als ein Fahrrad.",
-    },
-
-    # B1
-    {
-        "id": 7,
-        "level": "B1",
-        "topic": "Sentence Structure",
-        "grammar_point": "subordinate_clause_weil",
-        "prompt_goal": "Check whether the learner can produce a 'weil' clause with the verb at the end.",
-        "criteria": "The answer should contain a subordinate clause introduced by 'weil' with final verb placement.",
-        "example_answer": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
-    },
-    {
-        "id": 8,
-        "level": "B1",
-        "topic": "Grammar",
-        "grammar_point": "konjunktiv_ii_basics",
-        "prompt_goal": "Check whether the learner can express a hypothetical idea with Konjunktiv II.",
-        "criteria": "The answer should use a form like 'wÃ¼rde' or another clear Konjunktiv II structure.",
-        "example_answer": "Ich wÃ¼rde viel reisen und ein Haus kaufen.",
-    },
-    {
-        "id": 9,
-        "level": "B1",
-        "topic": "Sentence Structure",
-        "grammar_point": "relative_clauses_basics",
-        "prompt_goal": "Check whether the learner can combine two clauses using a relative clause.",
-        "criteria": "The answer should use a relative pronoun and a grammatically coherent relative clause.",
-        "example_answer": "Das ist die Frau, die mir hilft.",
-    },
-]
-
-LEVEL_ORDER = ["A1", "A2", "B1"]
-
-LEVEL_TASKS = {
-    "A1": [1, 2, 3],
-    "A2": [4, 5, 6],
-    "B1": [7, 8, 9],
+LEVEL_BLUEPRINTS = {
+    "Pre-A1": [
+        {
+            "topic": "Greetings",
+            "grammar_point": "basic_greeting_phrase",
+            "prompt_goal": "Check whether the learner can produce a very short greeting or self-introduction in German.",
+            "criteria": "The answer should contain a tiny but meaningful German phrase such as 'Hallo' or 'Ich heiße ...'.",
+            "example_answer": "Hallo, ich heiße Anna.",
+        },
+        {
+            "topic": "Basic Answers",
+            "grammar_point": "yes_no_basic_response",
+            "prompt_goal": "Check whether the learner can answer a very simple everyday question with one short German phrase.",
+            "criteria": "The answer should show a basic understandable response such as 'Ja', 'Nein', or one tiny phrase.",
+            "example_answer": "Ja, ein bisschen.",
+        },
+        {
+            "topic": "Basic Nouns",
+            "grammar_point": "single_word_everyday_vocab",
+            "prompt_goal": "Check whether the learner can name one very common everyday object or food item in German.",
+            "criteria": "The answer should contain at least one recognizable everyday German noun.",
+            "example_answer": "Wasser.",
+        },
+    ],
+    "A1": [
+        {
+            "topic": "Articles",
+            "grammar_point": "indefinite_articles_ein_eine_einen",
+            "prompt_goal": "Check whether the learner can produce a simple accusative noun phrase with an indefinite article.",
+            "criteria": "The answer should clearly show an accusative masculine phrase such as 'einen Apfel'.",
+            "example_answer": "Der Mann isst einen Apfel.",
+        },
+        {
+            "topic": "Negation",
+            "grammar_point": "negation_kein",
+            "prompt_goal": "Check whether the learner can negate a noun phrase with 'kein'.",
+            "criteria": "The answer should use 'kein' or an inflected form like 'keine' correctly.",
+            "example_answer": "Nein, ich habe kein Auto.",
+        },
+        {
+            "topic": "Verb Conjugation",
+            "grammar_point": "present_tense_basic_verbs",
+            "prompt_goal": "Check whether the learner can write one simple present-tense sentence about themselves.",
+            "criteria": "The answer should contain a clear present-tense sentence such as 'Ich wohne in Berlin.'",
+            "example_answer": "Ich wohne in Berlin.",
+        },
+    ],
+    "A2": [
+        {
+            "topic": "Verb Conjugation",
+            "grammar_point": "perfect_tense_basics",
+            "prompt_goal": "Check whether the learner can describe a completed past action with Perfekt.",
+            "criteria": "The answer should use a helper verb and a past participle appropriately.",
+            "example_answer": "Ich habe gestern Deutsch gelernt.",
+        },
+        {
+            "topic": "Cases",
+            "grammar_point": "accusative_with_movement",
+            "prompt_goal": "Check whether the learner can use a two-way preposition with movement and accusative.",
+            "criteria": "The answer should show movement toward a destination, such as 'auf den Tisch'.",
+            "example_answer": "Ich lege das Buch auf den Tisch.",
+        },
+        {
+            "topic": "Grammar",
+            "grammar_point": "comparatives_basics",
+            "prompt_goal": "Check whether the learner can compare two things with a comparative and 'als'.",
+            "criteria": "The answer should include a comparative form plus 'als'.",
+            "example_answer": "Ein Auto ist schneller als ein Fahrrad.",
+        },
+    ],
+    "B1": [
+        {
+            "topic": "Sentence Structure",
+            "grammar_point": "subordinate_clause_weil",
+            "prompt_goal": "Check whether the learner can produce a 'weil' clause with the verb at the end.",
+            "criteria": "The answer should contain a subordinate clause introduced by 'weil' with final verb placement.",
+            "example_answer": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
+        },
+        {
+            "topic": "Grammar",
+            "grammar_point": "konjunktiv_ii_basics",
+            "prompt_goal": "Check whether the learner can express a hypothetical idea with Konjunktiv II.",
+            "criteria": "The answer should use a form like 'würde' or another clear Konjunktiv II structure.",
+            "example_answer": "Ich würde viel reisen und ein Haus kaufen.",
+        },
+        {
+            "topic": "Sentence Structure",
+            "grammar_point": "relative_clauses_basics",
+            "prompt_goal": "Check whether the learner can combine two clauses using a relative clause.",
+            "criteria": "The answer should use a relative pronoun and a grammatically coherent relative clause.",
+            "example_answer": "Das ist die Frau, die mir hilft.",
+        },
+    ],
 }
 
-PROMOTION_POINT_THRESHOLD = {
-    "A1": 4,
-    "A2": 4,
-    "B1": 4,
-}
 
-FAIL_STOP_COUNT = {
-    "A1": 2,
-    "A2": 2,
-    "B1": 2,
-}
-
-MAX_POINTS_PER_TASK = 2
-MAX_POINTS_PER_LEVEL = 6
+def _level_index(level: str) -> int:
+    try:
+        return LEVEL_ORDER.index(level)
+    except ValueError:
+        return LEVEL_ORDER.index("A1")
 
 
-class DiagnosticManager:
-    @staticmethod
-    def get_start_task_id():
-        return LEVEL_TASKS["A1"][0]
+def _clamp_level(level: str) -> str:
+    return level if level in LEVEL_ORDER else "A1"
 
-    @staticmethod
-    def get_task(task_id):
-        return next((task for task in DIAGNOSTIC_TASKS if task["id"] == task_id), None)
 
-    @staticmethod
-    def get_level_for_task(task_id):
-        task = DiagnosticManager.get_task(task_id)
-        return task["level"] if task else "A1"
+def _extract_json(raw: str, fallback: Dict) -> Dict:
+    raw = (raw or "").strip()
+    if not raw:
+        return fallback
 
-    @staticmethod
-    def get_topic_for_task(task_id):
-        task = DiagnosticManager.get_task(task_id)
-        return task["topic"] if task else "Grammar"
+    parsed = safe_json_load(raw, None)
+    if isinstance(parsed, dict):
+        return parsed
 
-    @staticmethod
-    def get_grammar_point_for_task(task_id):
-        task = DiagnosticManager.get_task(task_id)
-        return task["grammar_point"] if task else "general_grammar"
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        parsed = safe_json_load(raw[start:end + 1], None)
+        if isinstance(parsed, dict):
+            return parsed
 
-    @staticmethod
-    def get_next_level(level):
-        try:
-            index = LEVEL_ORDER.index(level)
-        except ValueError:
-            return None
-        next_index = index + 1
-        if next_index >= len(LEVEL_ORDER):
-            return None
-        return LEVEL_ORDER[next_index]
+    return fallback
 
-    @staticmethod
-    def get_level_results(level, results):
-        return {
-            task_id: score_value
-            for task_id, score_value in results.items()
-            if DiagnosticManager.get_level_for_task(task_id) == level
-        }
 
-    @staticmethod
-    def count_points(level, results):
-        return sum(DiagnosticManager.get_level_results(level, results).values())
+def _attempt_summary(attempts: List[Dict]) -> str:
+    if not attempts:
+        return "No attempts yet."
 
-    @staticmethod
-    def count_failures(level, results):
-        return sum(
-            1
-            for score_value in DiagnosticManager.get_level_results(level, results).values()
-            if score_value == 0
+    lines = []
+    for attempt in attempts:
+        lines.append(
+            f"- Attempt {attempt['attempt']}: "
+            f"question_level={attempt['question_level']}, "
+            f"focus={attempt['focus_topic']}, "
+            f"score={attempt['score']}/2, "
+            f"estimated_level={attempt['estimated_level']}, "
+            f"answer={attempt['answer']!r}, "
+            f"feedback={attempt['rationale']}"
         )
-
-    @staticmethod
-    def get_unasked_tasks(level, results):
-        answered = set(
-            task_id for task_id in results
-            if DiagnosticManager.get_level_for_task(task_id) == level
-        )
-        return [task_id for task_id in LEVEL_TASKS[level] if task_id not in answered]
-
-    @staticmethod
-    def should_promote(level, results):
-        return DiagnosticManager.count_points(level, results) >= PROMOTION_POINT_THRESHOLD[level]
-
-    @staticmethod
-    def should_stop_level(level, results):
-        unasked = DiagnosticManager.get_unasked_tasks(level, results)
-        failures = DiagnosticManager.count_failures(level, results)
-        return failures >= FAIL_STOP_COUNT[level] or not unasked
-
-    @staticmethod
-    def get_next_task_id(current_id, score_value, results):
-        level = DiagnosticManager.get_level_for_task(current_id)
-
-        if DiagnosticManager.should_promote(level, results):
-            next_level = DiagnosticManager.get_next_level(level)
-            if next_level is None:
-                return None
-            next_level_tasks = DiagnosticManager.get_unasked_tasks(next_level, results)
-            return next_level_tasks[0] if next_level_tasks else None
-
-        remaining = DiagnosticManager.get_unasked_tasks(level, results)
-        if remaining and not DiagnosticManager.should_stop_level(level, results):
-            return remaining[0]
-
-        return None
-
-    @staticmethod
-    def determine_final_level(results):
-        if DiagnosticManager.count_points("B1", results) >= PROMOTION_POINT_THRESHOLD["B1"]:
-            return "B1"
-        if DiagnosticManager.count_points("A2", results) >= PROMOTION_POINT_THRESHOLD["A2"]:
-            return "A2"
-        return "A1"
-
-    @staticmethod
-    def score_by_level(results):
-        return {
-            level: DiagnosticManager.count_points(level, results)
-            for level in LEVEL_ORDER
-        }
-
-    @staticmethod
-    def grammar_point_scores(results):
-        scores = {}
-        for task_id, score_value in results.items():
-            grammar_point = DiagnosticManager.get_grammar_point_for_task(task_id)
-            if grammar_point not in scores:
-                scores[grammar_point] = {"points": 0, "total": 0}
-            scores[grammar_point]["points"] += score_value
-            scores[grammar_point]["total"] += MAX_POINTS_PER_TASK
-        return scores
-
-    @staticmethod
-    def format_question(task, generated_question):
-        return (
-            f"Level check for {task['level']} "
-            f"({task['topic']} - {task['grammar_point']}):\n"
-            f"{generated_question}"
-        )
+    return "\n".join(lines)
 
 
-    @staticmethod
-    def build_completion_message(final_level, results):
-        scores = DiagnosticManager.score_by_level(results)
-        return (
-            f"Thanks for working through that with me. "
-            f"Iâ€™d place you around {final_level} right now. "
-            f"Your score summary is "
-            f"A1={scores['A1']}/{MAX_POINTS_PER_LEVEL}, "
-            f"A2={scores['A2']}/{MAX_POINTS_PER_LEVEL}, "
-            f"B1={scores['B1']}/{MAX_POINTS_PER_LEVEL}. "
-            f"From here, Iâ€™ll adjust my explanations so they feel manageable and useful for you."
-        )
+def _fallback_question_plan(attempts: List[Dict]) -> Dict[str, str]:
+    if not attempts:
+        target_level = "A1"
+    else:
+        last = attempts[-1]
+        target_level = _clamp_level(last["estimated_level"])
+        if last["score"] == 2 and _level_index(target_level) < len(LEVEL_ORDER) - 1:
+            target_level = LEVEL_ORDER[_level_index(target_level) + 1]
+        elif last["score"] == 0 and _level_index(target_level) > 0:
+            target_level = LEVEL_ORDER[_level_index(target_level) - 1]
+
+    blueprints = LEVEL_BLUEPRINTS[target_level]
+    used_points = {
+        attempt.get("grammar_point")
+        for attempt in attempts
+        if attempt["question_level"] == target_level
+    }
+    blueprint = next(
+        (item for item in blueprints if item["grammar_point"] not in used_points),
+        blueprints[0],
+    )
+
+    return {
+        "target_level": target_level,
+        "focus_topic": blueprint["topic"],
+        "grammar_point": blueprint["grammar_point"],
+        "goal": blueprint["prompt_goal"],
+        "criteria": blueprint["criteria"],
+        "example_answer": blueprint["example_answer"],
+    }
 
 
+def _diagnostic_intro() -> str:
+    fallback = (
+        "Welcome. Before we begin learning together, I will ask you a few short questions "
+        "to understand your current German level. Please answer in German as much as you can. "
+        "There is no pressure, and it is completely fine if you are unsure. When you are ready, we can begin."
+    )
 
-def _extract_field(text: str, field: str) -> str:
-    pattern = rf"^{re.escape(field)}\s*:\s*(.+)$"
-    for line in text.splitlines():
-        match = re.match(pattern, line.strip(), flags=re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    return ""
+    try:
+        content = call_chat([{"role": "user", "content": build_diagnostic_intro_prompt()}]).strip()
+        return content or fallback
+    except Exception:
+        return fallback
 
 
-def _generate_question(task: Dict[str, str]) -> str:
+def _plan_next_question(attempts: List[Dict]) -> Dict[str, str]:
+    fallback = _fallback_question_plan(attempts)
+
     prompt = f"""
-You are a warm German tutor writing one short placement question.
+You are Kimi with RAG, a warm and adaptive German tutor planning the next question for a placement diagnostic.
 
-Target level: {task['level']}
-Topic: {task['topic']}
-Grammar point: {task['grammar_point']}
-Goal: {task['prompt_goal']}
+Available levels: {", ".join(LEVEL_ORDER)}
+Level blueprints:
+{json.dumps(LEVEL_BLUEPRINTS, ensure_ascii=False, indent=2)}
+
+Previous attempts:
+{_attempt_summary(attempts)}
+
+Choose the next best probe level and focus area. Prefer:
+- gentle upward movement after strong answers
+- same-level confirmation after partial answers
+- easier checks after clear failure
+- varied topics instead of repeating the same exact grammar point
+
+Return JSON only:
+{{
+  "target_level": "A1",
+  "focus_topic": "Verb Conjugation",
+  "grammar_point": "present_tense_basic_verbs",
+  "goal": "one short sentence explaining what this question should check",
+  "criteria": "one short sentence explaining what a good answer should contain",
+  "example_answer": "one short example answer"
+}}
+""".strip()
+
+    try:
+        planned = _extract_json(call_chat([{"role": "user", "content": prompt}]), fallback)
+        return {
+            "target_level": _clamp_level(planned.get("target_level", fallback["target_level"])),
+            "focus_topic": planned.get("focus_topic", fallback["focus_topic"]).strip() or fallback["focus_topic"],
+            "grammar_point": planned.get("grammar_point", fallback["grammar_point"]).strip() or fallback["grammar_point"],
+            "goal": planned.get("goal", fallback["goal"]).strip() or fallback["goal"],
+            "criteria": planned.get("criteria", fallback["criteria"]).strip() or fallback["criteria"],
+            "example_answer": planned.get("example_answer", fallback["example_answer"]).strip() or fallback["example_answer"],
+        }
+    except Exception:
+        return fallback
+
+
+def _generate_question(plan: Dict[str, str], attempts: List[Dict]) -> str:
+    prompt = f"""
+You are Kimi with RAG, a warm, human-like German tutor writing one short placement question.
+
+Target level: {plan['target_level']}
+Focus topic: {plan['focus_topic']}
+Grammar point: {plan['grammar_point']}
+Goal: {plan['goal']}
+Success criteria: {plan['criteria']}
+Reference answer: {plan['example_answer']}
+
+Previous attempts summary:
+{_attempt_summary(attempts)}
 
 Rules:
 - Ask for an answer in German.
+- Use English when giving the instruction to the learner.
 - Use short, clear teacher wording.
 - Keep it practical and natural.
+- Make the prompt fit the target level.
+- Sound supportive, calm, and not robotic.
 - Do not include the answer.
+- Do not mention CEFR labels in the question itself.
 
 Reply with only the question.
 """.strip()
 
     try:
         content = call_chat([{"role": "user", "content": prompt}]).strip()
-        return content or f"Please answer in German: {task['prompt_goal']}"
+        return content or f"Please answer in German about {plan['focus_topic']}."
     except Exception:
-        return f"Please answer in German: {task['prompt_goal']}"
+        return f"Please answer in German about {plan['focus_topic']}."
 
 
-def _fallback_grade(task: Dict[str, str], answer: str) -> Dict[str, str]:
+def _fallback_grade(plan: Dict[str, str], answer: str) -> Dict[str, str]:
     text = f" {answer.lower()} "
-    gp = task.get("grammar_point", "")
+    word_count = len(answer.split())
 
-    checks = {
-        "indefinite_articles_ein_eine_einen": [" einen ", " eine ", " ein "],
-        "negation_kein": [" kein ", " keine ", " keinen "],
-        "present_tense_basic_verbs": [" ich ", " du ", " er ", " sie ", " wir "],
-        "perfect_tense_basics": [" habe ", " hat ", " haben ", " bin ", " ist "],
-        "accusative_with_movement": [" auf den ", " in den ", " an den "],
-        "comparatives_basics": [" als ", "er "],
-        "subordinate_clause_weil": [" weil "],
-        "konjunktiv_ii_basics": [" wuerde ", " würde ", " haette ", " hätte "],
-        "relative_clauses_basics": [", die ", ", der ", ", das "],
+    if is_non_answer(answer):
+        return {
+            "label": "FAIL",
+            "score": 0,
+            "estimated_level": "Pre-A1",
+            "rationale": "There was not enough German to evaluate.",
+        }
+
+    signal_map = {
+        "Pre-A1": [" ja ", " nein ", " ich ", " du "],
+        "A1": [" ich ", " ist ", " habe ", " bin ", " kein ", " eine ", " einen "],
+        "A2": [" habe ", " bin ", " weil ", " als ", " auf den ", " in den "],
+        "B1": [" obwohl ", " würde ", " dass ", " die ", " der ", " meiner meinung "],
     }
 
-    expected = checks.get(gp, [])
-    hit_count = sum(1 for token in expected if token in text)
+    level = plan["target_level"]
+    markers = signal_map.get(level, [])
+    hits = sum(1 for marker in markers if marker in text)
 
-    if len(answer.strip()) < 3:
-        return {"label": "FAIL", "rationale": "The answer is too short."}
-    if expected and hit_count >= 1:
-        return {"label": "PARTIAL", "rationale": "The target pattern appears partly."}
-    if not expected and len(answer.split()) >= 4:
-        return {"label": "PARTIAL", "rationale": "The answer is understandable but limited."}
-    return {"label": "FAIL", "rationale": "The target grammar pattern is not clear."}
+    if word_count <= 2:
+        return {
+            "label": "FAIL",
+            "score": 0,
+            "estimated_level": "Pre-A1",
+            "rationale": "The response is too short for the target task.",
+        }
+    if hits >= 2 or (level in {"A1", "A2"} and word_count >= 5):
+        return {
+            "label": "FULL",
+            "score": 2,
+            "estimated_level": level,
+            "rationale": "The answer shows the target pattern clearly enough.",
+        }
+    if hits >= 1 or word_count >= 4:
+        estimated_level = level if level != "Pre-A1" else "A1"
+        return {
+            "label": "PARTIAL",
+            "score": 1,
+            "estimated_level": estimated_level,
+            "rationale": "The answer is understandable but only partly meets the target.",
+        }
+
+    lower_index = max(0, _level_index(level) - 1)
+    return {
+        "label": "FAIL",
+        "score": 0,
+        "estimated_level": LEVEL_ORDER[lower_index],
+        "rationale": "The target grammar or sentence control is not clear yet.",
+    }
 
 
-def _grade_answer(task: Dict[str, str], answer: str) -> Dict[str, str]:
+def _grade_answer(plan: Dict[str, str], question: str, answer: str, attempts: List[Dict]) -> Dict[str, str]:
+    fallback = _fallback_grade(plan, answer)
+
     prompt = f"""
-You are grading a short German placement answer.
+You are Kimi with RAG, a warm and careful German tutor grading one answer from an adaptive placement diagnostic.
 
-Level: {task['level']}
-Topic: {task['topic']}
-Grammar point: {task['grammar_point']}
-Goal: {task['prompt_goal']}
-Criteria: {task['criteria']}
-Reference answer: {task['example_answer']}
+Target level: {plan['target_level']}
+Focus topic: {plan['focus_topic']}
+Grammar point: {plan['grammar_point']}
+Goal: {plan['goal']}
+Criteria: {plan['criteria']}
+Reference answer: {plan['example_answer']}
+Question: {question}
 Learner answer: {answer}
 
-Grade with one label:
-- FULL
-- PARTIAL
-- FAIL
+Previous attempts summary:
+{_attempt_summary(attempts)}
 
-Reply exactly:
-SCORE: FULL or PARTIAL or FAIL
-RATIONALE: one short sentence
+Grade the answer based on grammatical control, relevance to the prompt, and how much support the learner would need.
+
+Return JSON only:
+{{
+  "label": "FULL",
+  "score": 2,
+  "estimated_level": "A2",
+  "rationale": "one short sentence"
+}}
+
+Rules:
+- label must be FULL, PARTIAL, or FAIL
+- score must be 2, 1, or 0
+- estimated_level must be one of {LEVEL_ORDER}
+- rationale must be short, kind, and human-sounding
 """.strip()
 
     try:
-        raw = call_chat([{"role": "user", "content": prompt}]).strip()
-        label = _extract_field(raw, "SCORE").upper()
-        rationale = _extract_field(raw, "RATIONALE") or "Checked against the target grammar point."
+        graded = _extract_json(call_chat([{"role": "user", "content": prompt}]), fallback)
+        label = str(graded.get("label", fallback["label"])).upper()
+        score = graded.get("score", fallback["score"])
+        estimated_level = _clamp_level(str(graded.get("estimated_level", fallback["estimated_level"])))
+        rationale = str(graded.get("rationale", fallback["rationale"])).strip() or fallback["rationale"]
 
-        if label not in {"FULL", "PARTIAL", "FAIL"}:
-            fallback = _fallback_grade(task, answer)
-            label = fallback["label"]
-            rationale = fallback["rationale"]
+        if label not in {"FULL", "PARTIAL", "FAIL"} or score not in {0, 1, 2}:
+            return fallback
 
-        return {"label": label, "rationale": rationale}
+        return {
+            "label": label,
+            "score": score,
+            "estimated_level": estimated_level,
+            "rationale": rationale,
+        }
     except Exception:
-        return _fallback_grade(task, answer)
+        return fallback
+
+
+def _fallback_decision(attempts: List[Dict]) -> Dict[str, str]:
+    if not attempts:
+        return {"action": "continue", "final_level": "A1", "reason": "Need more evidence."}
+
+    scores = [attempt["score"] for attempt in attempts]
+    avg_score = average_score({str(i): score for i, score in enumerate(scores, start=1)})
+    strong_b1 = any(
+        attempt["question_level"] == "B1" and attempt["score"] == 2
+        for attempt in attempts
+    )
+    strong_a2 = any(
+        attempt["question_level"] == "A2" and attempt["score"] >= 1
+        for attempt in attempts
+    )
+    weak_a1 = sum(
+        1 for attempt in attempts
+        if attempt["question_level"] in {"Pre-A1", "A1"} and attempt["score"] == 0
+    ) >= 2
+
+    if len(attempts) < MIN_ATTEMPTS:
+        return {"action": "continue", "final_level": "A1", "reason": "Need more evidence."}
+
+    if strong_b1 and avg_score >= 1.2:
+        final_level = "B1"
+    elif strong_a2 and avg_score >= 1.0:
+        final_level = "A2"
+    elif weak_a1 and avg_score < 0.8:
+        final_level = "Pre-A1"
+    else:
+        final_level = "A1"
+
+    if len(attempts) >= MAX_ATTEMPTS or avg_score < 0.6 or strong_b1:
+        return {"action": "stop", "final_level": final_level, "reason": "Enough evidence collected."}
+
+    recent_partial = len(attempts) >= 2 and all(attempt["score"] == 1 for attempt in attempts[-2:])
+    if recent_partial:
+        return {"action": "stop", "final_level": final_level, "reason": "Performance has stabilized."}
+
+    return {"action": "continue", "final_level": final_level, "reason": "Collect one more sample."}
+
+
+def _decide_next_step(attempts: List[Dict]) -> Dict[str, str]:
+    fallback = _fallback_decision(attempts)
+
+    prompt = f"""
+You are deciding whether to continue or stop an adaptive German placement diagnostic.
+
+Attempts so far:
+{_attempt_summary(attempts)}
+
+Rules:
+- Minimum attempts before stopping: {MIN_ATTEMPTS}
+- Maximum attempts: {MAX_ATTEMPTS}
+- Stop when the learner's level is clear enough.
+- Final level must be one of {LEVEL_ORDER}.
+- Avoid overtesting.
+
+Return JSON only:
+{{
+  "action": "continue",
+  "final_level": "A1",
+  "reason": "one short sentence"
+}}
+""".strip()
+
+    try:
+        decision = _extract_json(call_chat([{"role": "user", "content": prompt}]), fallback)
+        action = str(decision.get("action", fallback["action"])).lower()
+        final_level = _clamp_level(str(decision.get("final_level", fallback["final_level"])))
+        reason = str(decision.get("reason", fallback["reason"])).strip() or fallback["reason"]
+
+        if action not in {"continue", "stop"}:
+            return fallback
+
+        if len(attempts) < MIN_ATTEMPTS:
+            action = "continue"
+        if len(attempts) >= MAX_ATTEMPTS:
+            action = "stop"
+
+        return {
+            "action": action,
+            "final_level": final_level,
+            "reason": reason,
+        }
+    except Exception:
+        return fallback
+
+
+def _format_question(plan: Dict[str, str], generated_question: str) -> str:
+    return generated_question
+
+
+def _build_completion_message(final_level: str, attempts: List[Dict]) -> str:
+    total_points = sum(attempt["score"] for attempt in attempts)
+    max_points = len(attempts) * MAX_SCORE_PER_ATTEMPT
+    evidence = ", ".join(
+        f"{attempt['question_level']}:{attempt['score']}/2"
+        for attempt in attempts
+    )
+
+    return (
+        f"Thanks for working through that with me. "
+        f"I'd place you around {final_level} right now. "
+        f"You scored {total_points}/{max_points} across {len(attempts)} adaptive checks "
+        f"({evidence}). "
+        f"From here, I'll adjust my explanations so they feel manageable and useful for you."
+    )
 
 
 def run_diagnosis() -> str:
-    print("=" * 60)
-    print("LexiPath-style diagnostic")
-    print("Answer in German. Type 'exit' to quit.")
-    print("=" * 60)
+    print()
+    print(f"Tutor: {_diagnostic_intro()}")
+    print()
 
-    results: Dict[int, int] = {}
-    current_id = DiagnosticManager.get_start_task_id()
+    attempts: List[Dict] = []
 
-    while True:
-        task = DiagnosticManager.get_task(current_id)
-        question = _generate_question(task)
-        prompt = DiagnosticManager.format_question(task, question)
+    while len(attempts) < MAX_ATTEMPTS:
+        plan = _plan_next_question(attempts)
+        question = _generate_question(plan, attempts)
+        prompt = _format_question(plan, question)
 
         print(f"\nTutor: {prompt}")
         answer = input("You: ").strip()
@@ -376,23 +516,35 @@ def run_diagnosis() -> str:
             print("Session ended.")
             return "A1"
 
-        grade = _grade_answer(task, answer)
-        score_map = {"FULL": 2, "PARTIAL": 1, "FAIL": 0}
-        score = score_map.get(grade["label"], 0)
-        results[current_id] = score
+        grade = _grade_answer(plan, question, answer, attempts)
+        attempt = {
+            "attempt": len(attempts) + 1,
+            "question_level": plan["target_level"],
+            "focus_topic": plan["focus_topic"],
+            "grammar_point": plan["grammar_point"],
+            "goal": plan["goal"],
+            "question": question,
+            "answer": answer,
+            "label": grade["label"],
+            "score": grade["score"],
+            "estimated_level": grade["estimated_level"],
+            "rationale": grade["rationale"],
+        }
+        attempts.append(attempt)
 
         print(f"Tutor: {grade['rationale']}")
 
-        next_id = DiagnosticManager.get_next_task_id(current_id, score, results)
-        if next_id is None:
-            break
-        current_id = next_id
+        decision = _decide_next_step(attempts)
+        if decision["action"] == "stop":
+            final_level = decision["final_level"]
+            completion = _build_completion_message(final_level, attempts)
+            print(f"\nTutor: {completion}")
+            print(f"Detected level: {final_level}")
+            return final_level
 
-    final_level = DiagnosticManager.determine_final_level(results)
-    completion = DiagnosticManager.build_completion_message(final_level, results)
+    final_level = _fallback_decision(attempts)["final_level"]
+    completion = _build_completion_message(final_level, attempts)
 
     print(f"\nTutor: {completion}")
     print(f"Detected level: {final_level}")
     return final_level
-
-

@@ -3,12 +3,12 @@ import re
 from typing import Dict, Iterable, List
 
 from langchain_core.documents import Document
-from langchain_ollama import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
 
 CONNECTION_STRING = "postgresql+psycopg://postgres:mypassword@localhost:5432/postgres"
 COLLECTION_NAME = "lexipath_grammar_v2"
-EMBEDDING_MODEL = "embeddinggemma"
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 SOURCE_FILE = "LexiPath_Final_Knowledge_Base.jsonl"
 
 RULE_SOURCES = {"DiscoResearch"}
@@ -377,7 +377,9 @@ def build_documents(path: str) -> List[Document]:
 
 
 def ingest_documents(documents: List[Document], reset_collection: bool = False) -> None:
-    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
+    print(f"Loading embedding model: {EMBEDDING_MODEL}", flush=True)
+    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    print("Embedding model loaded.", flush=True)
 
     if reset_collection:
         try:
@@ -388,7 +390,7 @@ def ingest_documents(documents: List[Document], reset_collection: bool = False) 
                 use_jsonb=True,
             )
             temp_store.delete_collection()
-            print(f"Deleted existing collection: {COLLECTION_NAME}")
+            print(f"Deleted existing collection: {COLLECTION_NAME}", flush=True)
         except Exception:
             pass
 
@@ -400,12 +402,12 @@ def ingest_documents(documents: List[Document], reset_collection: bool = False) 
     )
 
     batch_size = 50
-    print(f"Prepared {len(documents)} retrieval documents for ingestion into {COLLECTION_NAME}.")
+    print(f"Prepared {len(documents)} retrieval documents for ingestion into {COLLECTION_NAME}.", flush=True)
 
     for start in range(0, len(documents), batch_size):
         batch = documents[start:start + batch_size]
         vector_store.add_documents(batch)
-        print(f"Loaded batch {start // batch_size + 1}")
+        print(f"Loaded batch {start // batch_size + 1}", flush=True)
 
 
 if __name__ == "__main__":

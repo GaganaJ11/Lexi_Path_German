@@ -1,20 +1,22 @@
 import re
 import os
+import time
 from typing import Any, Dict, List, TypedDict
 
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from langgraph.graph import END, START, StateGraph
 
+from curriculum import format_syllabus_reference, select_syllabus_reference
 from diagnostic_logic import DiagnosticManager
 from learner_store import build_learner_snapshot, learner_exists, load_learner, save_learner
 from retriever import retrieve_context_bundle
 
 llm = ChatNVIDIA(
-  model="moonshotai/kimi-k2.5",
-  api_key="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",
+  model="moonshotai/kimi-k2.6",
+  api_key="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",
   temperature=1,
   top_p=1,
-  max_completion_tokens=16384,
+  max_completion_tokens=2048,
 )
 
 LEVEL_GUIDELINES = {
@@ -31,6 +33,8 @@ def default_learner_profile():
         "recent_grammar_points": [],
         "weak_topics": [],
         "strong_topics": [],
+        "syllabus_history": [],
+        "current_syllabus_lesson": {},
         "preferred_language_support": "mostly_english",
         "last_goal_type": "",
     }
@@ -55,6 +59,7 @@ class TutorState(TypedDict, total=False):
     retrieved_context: str
     retrieved_documents: List[Dict[str, str]]
     retrieval_used_fallback: bool
+    syllabus_reference: Dict[str, Any]
     lesson_plan: Dict[str, Any]
 
     goal_type: str
@@ -97,11 +102,108 @@ def extract_section(text, field_name):
     return ""
 
 
+TRANSIENT_LLM_ERROR_MARKERS = (
+    "429",
+    "500",
+    "502",
+    "503",
+    "504",
+    "timeout",
+    "timed out",
+    "too many requests",
+    "gateway timeout",
+    "bad gateway",
+)
+
+
+def is_transient_llm_error(error):
+    message = str(error).lower()
+    return any(marker in message for marker in TRANSIENT_LLM_ERROR_MARKERS)
+
+
+def invoke_llm_content(prompt_or_messages, fallback_text=None, retries=0):
+    last_error = None
+    for attempt in range(retries + 1):
+        try:
+            return llm.invoke(prompt_or_messages).content.strip()
+        except Exception as error:
+            last_error = error
+            if not is_transient_llm_error(error) or attempt >= retries:
+                break
+            time.sleep(2 * (attempt + 1))
+
+    if fallback_text is not None:
+        return fallback_text
+    raise last_error
+
+
+def fallback_request_dimensions(user_message, user_level="A1"):
+    lowered = user_message.lower()
+
+    if any(word in lowered for word in ["plan", "schedule", "roadmap", "day", "week"]):
+        goal_type = "study_plan"
+    elif any(word in lowered for word in ["practice", "exercise", "quiz", "task"]):
+        goal_type = "practice"
+    elif any(word in lowered for word in ["correct", "check", "fix", "mistake"]):
+        goal_type = "correction"
+    elif any(word in lowered for word in ["explain", "difference", "what is", "how do", "help me understand"]):
+        goal_type = "explanation"
+    else:
+        goal_type = "general_help"
+
+    language_support = {
+        "A1": "mostly_english",
+        "A2": "mixed",
+        "B1": "mixed",
+    }.get(user_level, "mostly_english")
+
+    return f"""
+GOAL_TYPE: {goal_type}
+RESPONSE_STYLE: gentle
+LANGUAGE_SUPPORT: {language_support}
+PRACTICE_NOW: {"YES" if goal_type in {"practice", "correction"} else "NO"}
+RATIONALE: Fallback routing used because the model service was unavailable.
+""".strip()
+
+
+def build_service_fallback_response(state):
+    level = state.get("user_level", "A1")
+    latest_user_message = state.get("latest_user_message", "").lower()
+    syllabus_reference = format_syllabus_reference(
+        state.get("lesson_plan", {}).get("syllabus_reference", {})
+        or state.get("syllabus_reference", {})
+    )
+
+    if any(word in latest_user_message for word in ["plan", "schedule", "roadmap", "day", "week"]):
+        syllabus_line = ""
+        if syllabus_reference and not syllabus_reference.lower().startswith("no syllabus reference"):
+            syllabus_line = f"\n\nSyllabus guide for today:\n{syllabus_reference}"
+
+        return (
+            "I am having trouble reaching the full tutor engine right now, "
+            "so let us keep your learning moving with a simple plan.\n\n"
+            f"Today at {level}, try this:\n"
+            "1. Warm-up: write 3 short German sentences about your day.\n"
+            "2. Review: choose one grammar point you found difficult recently.\n"
+            "3. Practice: do one small exercise with 3-5 answers.\n"
+            "4. Wrap-up: correct one mistake and save one sentence to reuse tomorrow."
+            f"{syllabus_line}\n\n"
+            "If you want, we can start with the warm-up now."
+        )
+
+    return (
+        "I am having trouble reaching the full tutor engine right now, "
+        "but we can still continue gently.\n\n"
+        f"For your current level, {level}, send me one short German sentence "
+        "about what you want to practice today, and I will help you step by step."
+    )
+
+
 def build_diagnostic_intro():
     return (
-        "Hallo! I’m Lexi, your German tutor. "
-        "I’ll ask a few short questions first so I can understand your current level and teach in a way that fits you. "
-        "Please answer in German as naturally as you can. If you're unsure, just try your best.\n\n"
+        "Hallo! I’m Lexi, your German tutor. It's so nice to meet you. "
+        "I'll ask just a few quick questions to get a sense of your current German level and teach in a way that fits you. "
+        "There's absolutely no pressure here—just share what feels comfortable, and answer in German whenrever you can. Just try your best.\n\n"
         "Let’s begin."
     )
 
@@ -151,7 +253,11 @@ PRACTICE_NOW: YES or NO
 RATIONALE: one short sentence
 """.strip()
 
-    response = llm.invoke(prompt).content.strip()
+    response = invoke_llm_content(
+        prompt,
+        fallback_text=fallback_request_dimensions(user_message, user_level),
+        retries=1,
+    )
 
     goal_type = extract_section(response, "GOAL_TYPE") or "general_help"
     response_style = extract_section(response, "RESPONSE_STYLE") or "gentle"
@@ -250,7 +356,17 @@ RATIONALE: one short sentence
 """.strip()
 
     try:
-        response = llm.invoke(prompt).content.strip()
+        fallback_response = _fallback_level_adjustment_request(user_message, current_level)
+        response = invoke_llm_content(
+            prompt,
+            fallback_text=(
+                f"LEVEL_CHANGE_INTENT: {fallback_response['level_change_intent']}\n"
+                f"REQUESTED_LEVEL: {fallback_response['requested_level']}\n"
+                f"CONFIDENCE: {fallback_response['level_confidence'].upper()}\n"
+                f"RATIONALE: {fallback_response['level_change_rationale']}"
+            ),
+            retries=0,
+        )
 
         intent = extract_section(response, "LEVEL_CHANGE_INTENT").upper() or "NO"
         requested_level = extract_section(response, "REQUESTED_LEVEL").upper() or "NONE"
@@ -316,7 +432,11 @@ SCORE: FULL or PARTIAL or FAIL
 RATIONALE: one short sentence
 """.strip()
 
-    response = llm.invoke(prompt).content.strip()
+    response = invoke_llm_content(
+        prompt,
+        fallback_text="SCORE: FAIL\nRATIONALE: Could not grade reliably because the model service was unavailable.",
+        retries=1,
+    )
     score_label = extract_section(response, "SCORE").upper()
     rationale = extract_section(response, "RATIONALE") or "I checked the answer against the target grammar."
 
@@ -358,10 +478,11 @@ Rules:
 Reply with only the question text.
 """.strip()
 
-    try:
-        return llm.invoke(prompt).content.strip()
-    except Exception:
-        return f"Please answer in German: {task['prompt_goal']}"
+    return invoke_llm_content(
+        prompt,
+        fallback_text=f"Please answer in German: {task['prompt_goal']}",
+        retries=0,
+    )
 
 
 def build_human_diagnostic_feedback(task, evaluation, user_level="A1"):
@@ -388,14 +509,18 @@ Rules:
 Reply with only the tutor message.
 """.strip()
 
-    try:
-        return llm.invoke(prompt).content.strip()
-    except Exception:
-        if evaluation["score_value"] == 2:
-            return "Nice work. That was a strong answer."
-        if evaluation["score_value"] == 1:
-            return "Good start. You're on the right track."
-        return "Good try. Let's keep going one step at a time."
+    if evaluation["score_value"] == 2:
+        fallback_feedback = "Nice work. That was a strong answer."
+    elif evaluation["score_value"] == 1:
+        fallback_feedback = "Good start. You're on the right track."
+    else:
+        fallback_feedback = "Good try. Let's keep going one step at a time."
+
+    return invoke_llm_content(
+        prompt,
+        fallback_text=fallback_feedback,
+        retries=0,
+    )
 
 
 def ask_diagnostic_question(state):
@@ -556,21 +681,32 @@ def retrieve_context(state):
     topic_hint = state.get("topic_hint", "Grammar")
     latest_user_message = state.get("latest_user_message", "")
     user_level = state.get("user_level", "A1")
+    syllabus_reference = select_syllabus_reference(
+        level=user_level,
+        topic=topic_hint,
+        grammar_point=state.get("grammar_point", ""),
+        learner_profile=state.get("learner_profile", default_learner_profile()),
+    )
 
     if goal_type == "study_plan":
         return {
             "retrieved_context": "",
             "retrieved_documents": [],
             "retrieval_used_fallback": False,
+            "syllabus_reference": syllabus_reference,
             "topic_hint": topic_hint,
             "grammar_point": "",
         }
 
+    retrieval_query = latest_user_message
+    if syllabus_reference.get("search_query"):
+        retrieval_query = f"{latest_user_message}\nCurriculum reference: {syllabus_reference['search_query']}"
+
     bundle = retrieve_context_bundle(
-        query=latest_user_message,
+        query=retrieval_query,
         user_level=user_level,
         topic_hint=topic_hint,
-        k=4,
+        k=5,
     )
     return {
         "topic_hint": bundle["topic"],
@@ -578,6 +714,7 @@ def retrieve_context(state):
         "retrieved_context": bundle["context_text"],
         "retrieved_documents": bundle["documents"],
         "retrieval_used_fallback": bundle["used_fallback"],
+        "syllabus_reference": syllabus_reference,
     }
 
 
@@ -587,6 +724,12 @@ def plan_lesson(state):
     response_style = state.get("response_style", "gentle")
     language_support = state.get("language_support", "mostly_english")
     practice_now = state.get("practice_now", "NO")
+    syllabus_reference = state.get("syllabus_reference") or select_syllabus_reference(
+        level=level,
+        topic=state.get("topic_hint", "Grammar"),
+        grammar_point=state.get("grammar_point", ""),
+        learner_profile=state.get("learner_profile", default_learner_profile()),
+    )
 
     return {
         "lesson_plan": {
@@ -598,6 +741,7 @@ def plan_lesson(state):
             "topic": state.get("topic_hint", "Grammar"),
             "grammar_point": state.get("grammar_point", ""),
             "use_retrieval_fallback": state.get("retrieval_used_fallback", False),
+            "syllabus_reference": syllabus_reference,
         }
     }
 
@@ -689,6 +833,14 @@ def update_learner_profile(profile, state):
     elif latest_user_message and not profile.get("current_goal"):
         profile["current_goal"] = latest_user_message
 
+    syllabus_reference = state.get("lesson_plan", {}).get("syllabus_reference", {})
+    lesson_id = syllabus_reference.get("lesson_id")
+    if lesson_id:
+        syllabus_history = list(profile.get("syllabus_history", []))
+        syllabus_history.append(lesson_id)
+        profile["syllabus_history"] = unique_keep_order(syllabus_history)[-10:]
+        profile["current_syllabus_lesson"] = syllabus_reference
+
     return profile
 
 
@@ -701,6 +853,11 @@ def summarize_learner_profile(profile):
     recent_grammar_points = ", ".join(profile.get("recent_grammar_points", [])) or "none yet"
     weak_topics = ", ".join(profile.get("weak_topics", [])) or "none identified yet"
     strong_topics = ", ".join(profile.get("strong_topics", [])) or "none identified yet"
+    current_syllabus = profile.get("current_syllabus_lesson", {})
+    current_syllabus_text = (
+        f"{current_syllabus.get('level', '')} {current_syllabus.get('lesson_id', '')} "
+        f"{current_syllabus.get('title', '')}"
+    ).strip() or "none yet"
     preferred_language_support = profile.get("preferred_language_support", "mostly_english")
     last_goal_type = profile.get("last_goal_type") or "unknown"
 
@@ -710,6 +867,7 @@ def summarize_learner_profile(profile):
         f"Recent grammar points: {recent_grammar_points}. "
         f"Weak topics: {weak_topics}. "
         f"Strong topics: {strong_topics}. "
+        f"Current syllabus reference: {current_syllabus_text}. "
         f"Preferred language support: {preferred_language_support}. "
         f"Last goal type: {last_goal_type}."
     )
@@ -811,6 +969,7 @@ def build_shared_tutor_instructions(state):
     response_style = lesson_plan.get("response_style", "gentle")
     language_support = lesson_plan.get("language_support", "mostly_english")
     grammar_point = lesson_plan.get("grammar_point", "") or state.get("grammar_point", "")
+    syllabus_reference_text = format_syllabus_reference(lesson_plan.get("syllabus_reference", {}))
     level_source = state.get("level_source", "diagnostic")
     level_confidence = state.get("level_confidence", "high")
 
@@ -841,15 +1000,22 @@ Learner profile:
 Grammar-point mastery:
 {mastery_summary}
 
+Syllabus reference:
+{syllabus_reference_text}
+
 Routing rationale:
 {state.get('routing_rationale', 'No routing rationale available.')}
 
 Tutor behavior rules:
-- Be human, warm, and supportive.
+- Sound human, calm, and encouraging. Never be robotic or generic.
+- Use the "Appreciation and Correction" loop: 1) Appreciate effort, 2) Highlight what was good, 3) Correct gently, 4) Explain briefly.
 - Do not sound like a textbook unless the learner explicitly wants that.
 - For A1 learners, reduce cognitive load and avoid long German-only passages.
 - Use retrieved teaching material when helpful.
 - Use rule-like content for explanation and example-like content for illustration.
+- Use the syllabus reference as a curriculum guide for examples, lesson focus, and practice sequencing.
+- Do not force the syllabus if the learner asks for something else; answer the learner first, then connect back naturally when useful.
+- If the syllabus reference and retrieved context differ, prioritize the learner's request and use the syllabus to choose an appropriate level and next step.
 - Reuse the learner profile naturally, especially recent struggles and current goals.
 - Use grammar-point mastery to decide whether to explain more slowly, review, or move faster.
 - If grammar-point mastery is low, explain more gently and include more support.
@@ -857,11 +1023,32 @@ Tutor behavior rules:
 - If the learner explicitly changed their level, respect that and adapt accordingly.
 - If retrieval is thin, answer carefully from general knowledge.
 
+Important:
+- explain the learner's level in a friendly way
+- appreciate the learner after every answer
+- encourage them even when there are mistakes
+- follow the compact learning path step by step unless the learner wants otherwise
+- after current level mastery, move to the next CEFR level automatically (A1 -> A2 -> B1)
+- never restart a finished level unless the learner asks to revise it
+- teach one small topic at a time
+- after each topic, ask whether they want more examples or want to continue
+- if they did well, tell them positively
+- do not sound robotic
+
+In your reply:
+1. encourage them
+3. respond to their preference
+4. mention the immediate learning focus briefly
+5. start with the first module and the first topic unless the learner asked to skip ahead
+6. ask one small comfortable first exercise
+
 Style instruction:
 {style_instruction_map.get(response_style, style_instruction_map['gentle'])}
 
 Language instruction:
 {build_language_support_instructions(language_support)}
+
+Reply naturally as Lexi.
 """.strip()
 
 
@@ -887,10 +1074,12 @@ Retrieved context:
     else:
         user_prompt = f"Student request: {state.get('latest_user_message', '')}"
 
-    response = llm.invoke(
-        [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+    response = invoke_llm_content(
+        [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+        fallback_text=build_service_fallback_response(state),
+        retries=1,
     )
-    return {"draft_response": response.content}
+    return {"draft_response": response}
 
 
 def handle_level_adjustment(state):
@@ -918,7 +1107,14 @@ Write a short response that:
 Reply with only the tutor message.
 """.strip()
 
-        response = llm.invoke(prompt).content.strip()
+        response = invoke_llm_content(
+            prompt,
+            fallback_text=(
+                "That makes sense. We can adjust the difficulty gently, or you can retake "
+                "the quick level check if you want a cleaner reset."
+            ),
+            retries=1,
+        )
         return {
             "draft_response": response,
         }
@@ -942,7 +1138,14 @@ Write a short response that:
 Reply with only the tutor message.
 """.strip()
 
-    response = llm.invoke(prompt).content.strip()
+    response = invoke_llm_content(
+        prompt,
+        fallback_text=(
+            f"Thanks, {display_name}. I will adapt our lessons to {requested_level} from now on, "
+            "and we can slow down or speed up whenever it feels right."
+        ),
+        retries=1,
+    )
     return {
         "user_level": requested_level,
         "level_source": "learner_override",
@@ -1034,6 +1237,9 @@ def response_quality_check(state):
     goal_type = state.get("goal_type", "general_help")
     language_support = state.get("language_support", "mostly_english")
     practice_now = state.get("practice_now", "NO")
+    syllabus_reference_text = format_syllabus_reference(
+        state.get("lesson_plan", {}).get("syllabus_reference", {})
+    )
 
     prompt = f"""
 You are reviewing a German tutor response before it is shown to the learner.
@@ -1042,6 +1248,8 @@ Student level: {level}
 Goal type: {goal_type}
 Language support: {language_support}
 Practice now: {practice_now}
+Syllabus reference:
+{syllabus_reference_text}
 
 Draft response:
 {draft_response}
@@ -1054,13 +1262,19 @@ Important checks:
 - If the learner asked for a study plan, do not suddenly start a quiz unless practice_now is YES.
 - The tone should feel warm and human.
 - The answer should match the learner's request.
+- The response should use the syllabus reference as a gentle guide when it helps with level, examples, or next steps.
+- The response should not ignore the learner's request just to follow the syllabus.
 
 Reply exactly in this format:
 STATUS: PASS or REVISE
 RATIONALE: one short sentence
 """.strip()
 
-    response = llm.invoke(prompt).content.strip()
+    response = invoke_llm_content(
+        prompt,
+        fallback_text="STATUS: PASS\nRATIONALE: Quality review skipped because the model service was unavailable.",
+        retries=0,
+    )
     status = extract_section(response, "STATUS").upper() or "PASS"
     rationale = extract_section(response, "RATIONALE") or "The draft looks suitable."
 
@@ -1079,6 +1293,9 @@ def answer_revision(state):
     level = state.get("user_level", "A1")
     goal_type = state.get("goal_type", "general_help")
     language_support = state.get("language_support", "mostly_english")
+    syllabus_reference_text = format_syllabus_reference(
+        state.get("lesson_plan", {}).get("syllabus_reference", {})
+    )
 
     prompt = f"""
 You are revising a tutor response for a German learner.
@@ -1086,6 +1303,8 @@ You are revising a tutor response for a German learner.
 Student level: {level}
 Goal type: {goal_type}
 Language support: {language_support}
+Syllabus reference:
+{syllabus_reference_text}
 
 Original draft:
 {draft_response}
@@ -1098,12 +1317,17 @@ Revise the response so it:
 - sounds warm and human
 - uses enough English support for the learner
 - matches the learner's actual request
+- uses the syllabus as a gentle curriculum reference when useful
 - does not start practice unexpectedly
 
 Reply with only the improved tutor response.
 """.strip()
 
-    response = llm.invoke(prompt).content.strip()
+    response = invoke_llm_content(
+        prompt,
+        fallback_text=draft_response,
+        retries=0,
+    )
     return {"draft_response": response}
 
 

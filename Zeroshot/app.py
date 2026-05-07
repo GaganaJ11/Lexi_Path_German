@@ -7,8 +7,6 @@ def print_user_friendly_summary(summary: dict) -> None:
     strengths = summary.get("strengths", [])
     weaknesses = summary.get("weaknesses", [])
 
-    
-
     print(f"Your current German level is: {level}")
     print()
 
@@ -23,19 +21,7 @@ def print_user_friendly_summary(summary: dict) -> None:
 
     print()
 
-    if strengths:
-        print("What you are already doing well:")
-        for s in strengths:
-            print(f"- {s}")
-        print()
-
-    if weaknesses:
-        print("What we will improve next:")
-        for w in weaknesses:
-            print(f"- {w}")
-        print()
-
-    print("We will now continue with a structured learning plan.")
+    print("Next, we will start with one small step that fits your level.")
     print()
 
 

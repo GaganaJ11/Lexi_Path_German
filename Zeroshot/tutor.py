@@ -1,7 +1,15 @@
 from typing import Dict, List
-from syllabus import LEVEL_ORDER, format_syllabus_for_learner
-from engine import call_ollama
+from syllabus import LEVEL_ORDER, format_compact_learning_path
+from engine import call_kimi
 from prompts import tutor_system_prompt
+
+
+TUTOR_START_OPTIONS = {
+    "full plan": "follow the full structured plan",
+    "revise current level": "revise current level before moving ahead",
+    "proceed next level": "proceed to the next level when ready",
+    "focus on speaking": "focus on speaking, grammar, writing, work, or daily conversation",
+}
 
 
 def _get_next_level(level: str) -> str:
@@ -13,44 +21,43 @@ def _get_next_level(level: str) -> str:
     return LEVEL_ORDER[idx + 1]
 
 
+def _prompt_for_start_choice() -> str:
+    print("We can learn in a flexible way.")
+    for option in TUTOR_START_OPTIONS.values():
+        print(f"- {option}")
+    print()
+
+    prompt = (
+        "What would you like to do first? "
+        "(Options: full plan / revise current level / proceed next level / focus on speaking): "
+    )
+
+    while True:
+        user_choice = input(prompt).strip().lower()
+        if user_choice in TUTOR_START_OPTIONS:
+            return user_choice
+
+        print("Please choose one of the listed options so I can start in the right mode.")
+        print()
+
+
 def start_tutor(level: str, summary: Dict) -> None:
     print()
-    print("Let's start your learning journey 😊")
+    print("Let's start your learning journey.")
     print()
 
     print(f"You are currently around: {level}")
     print()
 
-    print("Here is your structured learning plan:")
+    print("Here is a short plan for what comes next:")
     print()
 
-    formatted_syllabus = format_syllabus_for_learner(level)
-    print(formatted_syllabus)
+    compact_plan = format_compact_learning_path(level)
+    print(compact_plan)
     print()
 
-    if summary.get("strengths"):
-        print("What you are already doing well:")
-        for s in summary["strengths"]:
-            print(f"- {s}")
-
-    if summary.get("weaknesses"):
-        print("\nWhat we can improve next:")
-        for w in summary["weaknesses"]:
-            print(f"- {w}")
-
     print()
-    print("We can learn in a flexible way.")
-    print("- follow the full structured plan")
-    print("- skip parts you already know")
-    print("- revise current level before moving ahead")
-    print("- proceed to the next level when ready")
-    print("- focus on speaking, grammar, writing, work, or daily conversation")
-    print()
-
-    user_choice = input(
-        "What would you like to do first? "
-        "(Example: full plan / revise current level / proceed next level / focus on speaking): "
-    ).strip()
+    user_choice = _prompt_for_start_choice()
     next_level = _get_next_level(level)
 
     starter_message = f"""
@@ -60,11 +67,11 @@ Detected level: {level}
 Strengths: {summary.get('strengths', [])}
 Weaknesses: {summary.get('weaknesses', [])}
 
-Structured syllabus:
-{formatted_syllabus}
+Compact learning path:
+{compact_plan}
 
 Learner preference:
-{user_choice}
+{TUTOR_START_OPTIONS[user_choice]}
 
 Please act as a warm, human-like private German tutor.
 
@@ -72,7 +79,7 @@ Important:
 - explain the learner's level in a friendly way
 - appreciate the learner after every answer
 - encourage them even when there are mistakes
-- follow the structured syllabus step by step unless the learner wants otherwise
+- follow the compact learning path step by step unless the learner wants otherwise
 - after current level mastery, move to the next CEFR level automatically (A1 -> A2 -> B1)
 - never restart a finished level unless the learner asks to revise it
 - clearly mention the current level, section, and topic
@@ -84,11 +91,10 @@ Important:
 - if they did well, tell them positively
 - do not sound robotic
 
-In your first reply:
-1. explain the learner's level in a warm way
-2. encourage them
+In your reply:
+1. encourage them
 3. respond to their preference
-4. introduce the structured syllabus briefly
+4. mention the immediate learning focus briefly
 5. start with the first module and the first topic unless the learner asked to skip ahead
 6. ask one small comfortable first exercise
 7. mention that once {level} is complete, we continue with {next_level}
@@ -99,7 +105,10 @@ In your first reply:
         {"role": "user", "content": starter_message}
     ]
 
-    reply = call_ollama(messages)
+    
+    reply = call_kimi(messages)
+
+
     messages.append({"role": "assistant", "content": reply})
 
     print("\nTutor:")
@@ -113,7 +122,8 @@ In your first reply:
             break
 
         messages.append({"role": "user", "content": user_input})
-        reply = call_ollama(messages)
+        reply = call_kimi(messages)
+
         messages.append({"role": "assistant", "content": reply})
 
         print("\nTutor:")

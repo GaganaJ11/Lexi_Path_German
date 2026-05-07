@@ -1,45 +1,72 @@
 import json
-import requests
 from typing import Dict, List, Optional
 
-from config import (
-    OLLAMA_CHAT_URL,
-    OLLAMA_EMBED_URL,
-    CHAT_MODEL,
-    EMBED_MODEL,
-    REQUEST_TIMEOUT
-)
+import requests
+
+from config import CHAT_TEMPERATURE, KIMI_API_KEY, KIMI_API_URL, KIMI_MODEL_NAME, REQUEST_TIMEOUT
+
+
+def _headers() -> Dict[str, str]:
+    if not KIMI_API_KEY:
+        raise RuntimeError(
+            "KIMI_API_KEY is not configured. Set it in your environment before running the app."
+        )
+
+    return {
+        "Authorization": f"Bearer {KIMI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def _extract_message_content(data: Dict) -> str:
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError(f"Kimi response did not include choices: {data}")
+
+    message = choices[0].get("message") or {}
+    content = message.get("content", "")
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+        return "\n".join(part for part in parts if part).strip()
+
+    return str(content).strip()
+
 
 def call_chat(messages: List[Dict], json_schema: Optional[Dict] = None) -> str:
-    payload = {
-        "model": CHAT_MODEL,
+    payload: Dict = {
+        "model": KIMI_MODEL_NAME,
         "messages": messages,
-        "stream": False
+        "temperature": CHAT_TEMPERATURE,
+        "stream": False,
     }
 
     if json_schema is not None:
-        payload["format"] = json_schema
+        payload["response_format"] = {"type": "json_object"}
 
-    response = requests.post(OLLAMA_CHAT_URL, json=payload, timeout=REQUEST_TIMEOUT)
+    response = requests.post(
+        KIMI_API_URL,
+        headers=_headers(),
+        json=payload,
+        timeout=REQUEST_TIMEOUT,
+    )
     response.raise_for_status()
 
     data = response.json()
-    return data["message"]["content"]
+    content = _extract_message_content(data)
+    if not content:
+        raise RuntimeError(f"Kimi returned an empty message: {data}")
+    return content
 
-def embed_texts(texts: List[str]) -> List[List[float]]:
-    payload = {
-        "model": EMBED_MODEL,
-        "input": texts
-    }
 
-    response = requests.post(OLLAMA_EMBED_URL, json=payload, timeout=REQUEST_TIMEOUT)
-    response.raise_for_status()
-
-    data = response.json()
-    return data["embeddings"]
-
-def safe_json_load(raw: str, fallback: Dict) -> Dict:
+def safe_json_load(raw: str, fallback: Optional[Dict]) -> Optional[Dict]:
     try:
         return json.loads(raw)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return fallback

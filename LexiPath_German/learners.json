@@ -156,9 +156,13 @@
       }
     ],
     "learner_profile": {
-      "current_goal": "",
-      "recent_topics": [],
-      "recent_grammar_points": [],
+      "current_goal": "You say",
+      "recent_topics": [
+        "Grammar"
+      ],
+      "recent_grammar_points": [
+        "definite_articles_basics"
+      ],
       "weak_topics": [
         "A2 Verb Conjugation",
         "A2 Cases"
@@ -169,20 +173,35 @@
         "A1 Verb Conjugation"
       ],
       "preferred_language_support": "mostly_english",
-      "last_goal_type": ""
+      "last_goal_type": "general_help",
+      "syllabus_history": [
+        "A1-01"
+      ],
+      "current_syllabus_lesson": {
+        "mode": "guided",
+        "lesson_id": "A1-01",
+        "level": "A1",
+        "title": "Hallo!",
+        "primary_topics": [
+          "Articles"
+        ],
+        "search_query": "A1 German grammar Articles Hallo!",
+        "reason": "Using first available A1 curriculum reference."
+      }
     },
     "grammar_point_mastery": {
       "indefinite_articles_ein_eine_einen": 0,
       "negation_kein": 1,
       "present_tense_basic_verbs": 1,
       "perfect_tense_basics": 0,
-      "accusative_with_movement": 0
+      "accusative_with_movement": 0,
+      "definite_articles_basics": 0
     },
     "phase": "tutoring",
     "intro_shown": true,
     "display_name": "Shiny",
     "learner_id": "shiny",
-    "last_active": "2026-04-21T15:58:48.201067"
+    "last_active": "2026-05-07T15:32:55.820346"
   },
   "gagana": {
     "user_level": "A2",
@@ -268,7 +287,7 @@
       }
     ],
     "learner_profile": {
-      "current_goal": "Ok thank you. Give me today's study plan.",
+      "current_goal": "Let's start as per your suggestion",
       "recent_topics": [
         "Grammar"
       ],
@@ -286,7 +305,22 @@
         "B1 Grammar"
       ],
       "preferred_language_support": "mixed",
-      "last_goal_type": "general_help"
+      "last_goal_type": "study_plan",
+      "syllabus_history": [
+        "A2-01"
+      ],
+      "current_syllabus_lesson": {
+        "mode": "guided",
+        "lesson_id": "A2-01",
+        "level": "A2",
+        "title": "Lebenslinien",
+        "primary_topics": [
+          "Verb Conjugation",
+          "Articles"
+        ],
+        "search_query": "A2 German grammar Verb Conjugation Lebenslinien",
+        "reason": "Using first available A2 curriculum reference."
+      }
     },
     "grammar_point_mastery": {
       "indefinite_articles_ein_eine_einen": 1,
@@ -302,6 +336,345 @@
     "intro_shown": true,
     "display_name": "Gagana",
     "learner_id": "gagana",
-    "last_active": "2026-04-22T13:41:24.233573"
+    "last_active": "2026-05-07T16:55:30.755671"
+  },
+  "aishwarya": {
+    "user_level": "A1",
+    "diagnostic_results": {
+      "1": 2,
+      "2": 1,
+      "3": 1,
+      "4": 0,
+      "5": 0
+    },
+    "diagnostic_feedback": [
+      {
+        "task_id": 1,
+        "level": "A1",
+        "topic": "Articles",
+        "grammar_point": "indefinite_articles_ein_eine_einen",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The student correctly produces the target accusative masculine phrase \"einen Apfel\", clearly demonstrating mastery of the indefinite article in accusative case despite the verb conjugation error with \"ich isst\"."
+      },
+      {
+        "task_id": 2,
+        "level": "A1",
+        "topic": "Negation",
+        "grammar_point": "negation_kein",
+        "score_label": "PARTIAL",
+        "score_value": 1,
+        "correct": true,
+        "rationale": "The learner correctly employs \"kein\" to negate the noun phrase but uses the uninflected form instead of the required accusative masculine \"keinen\" for \"Bruder\"."
+      },
+      {
+        "task_id": 3,
+        "level": "A1",
+        "topic": "Verb Conjugation",
+        "grammar_point": "present_tense_basic_verbs",
+        "score_label": "PARTIAL",
+        "score_value": 1,
+        "correct": true,
+        "rationale": "The first sentence shows correct present-tense conjugation of \"bin\" (despite using \"I\" instead of \"Ich\"), but the second sentence lacks a finite verb entirely."
+      },
+      {
+        "task_id": 4,
+        "level": "A2",
+        "topic": "Verb Conjugation",
+        "grammar_point": "perfect_tense_basics",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The answer uses present tense verbs and infinitives without any auxiliary verb or past participle, completely missing the required Perfekt construction."
+      },
+      {
+        "task_id": 5,
+        "level": "A2",
+        "topic": "Cases",
+        "grammar_point": "accusative_with_movement",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The answer contains critical errors (\"ich gehen\" lacks correct verb conjugation, and \"ins der\" is grammatically impossible as it incorrectly combines accusative \"ins\" with dative \"der\"), failing to demonstrate the target structure of accusative with movement."
+      }
+    ],
+    "learner_profile": {
+      "current_goal": "Ok what's next?",
+      "recent_topics": [
+        "Grammar"
+      ],
+      "recent_grammar_points": [],
+      "weak_topics": [
+        "A2 Verb Conjugation",
+        "A2 Cases"
+      ],
+      "strong_topics": [
+        "A1 Articles",
+        "A1 Negation",
+        "A1 Verb Conjugation"
+      ],
+      "preferred_language_support": "mostly_english",
+      "last_goal_type": "study_plan"
+    },
+    "grammar_point_mastery": {
+      "indefinite_articles_ein_eine_einen": 1,
+      "negation_kein": 0,
+      "present_tense_basic_verbs": 0,
+      "perfect_tense_basics": 0,
+      "accusative_with_movement": 0
+    },
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "Aishwarya",
+    "learner_id": "aishwarya",
+    "last_active": "2026-04-24T02:16:01.821233"
+  },
+  "eval_stateful_user": {
+    "user_level": "B1",
+    "diagnostic_results": {
+      "1": 2,
+      "2": 2,
+      "4": 2,
+      "5": 2,
+      "7": 2,
+      "8": 1,
+      "9": 2
+    },
+    "diagnostic_feedback": [
+      {
+        "task_id": 1,
+        "level": "A1",
+        "topic": "Articles",
+        "grammar_point": "indefinite_articles_ein_eine_einen",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The student correctly uses the accusative masculine indefinite article \"einen\" with the noun \"Apfel.\""
+      },
+      {
+        "task_id": 2,
+        "level": "A1",
+        "topic": "Negation",
+        "grammar_point": "negation_kein",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The student correctly uses 'kein' to negate the neuter noun 'Auto', clearly demonstrating the target negation grammar despite omitting the introductory 'Nein'."
+      },
+      {
+        "task_id": 4,
+        "level": "A2",
+        "topic": "Verb Conjugation",
+        "grammar_point": "perfect_tense_basics",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "Correctly uses Perfekt with auxiliary \"habe\" and past participle \"gelernt\" to describe a completed past action."
+      },
+      {
+        "task_id": 5,
+        "level": "A2",
+        "topic": "Cases",
+        "grammar_point": "accusative_with_movement",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "Perfectly demonstrates the target grammar by correctly using the accusative case \"den\" with the two-way preposition \"auf\" to indicate movement toward the destination."
+      },
+      {
+        "task_id": 7,
+        "level": "B1",
+        "topic": "Sentence Structure",
+        "grammar_point": "subordinate_clause_weil",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The answer correctly uses 'weil' with the finite verb 'will' placed at the end of the subordinate clause, demonstrating proper verb-final word order."
+      },
+      {
+        "task_id": 8,
+        "level": "B1",
+        "topic": "Grammar",
+        "grammar_point": "konjunktiv_ii_basics",
+        "score_label": "PARTIAL",
+        "score_value": 1,
+        "correct": true,
+        "rationale": "The student correctly uses Konjunktiv II \"hätte\" in the dependent clause, but incorrectly uses indicative future \"werde\" instead of Konjunktiv II (\"würde\") in the main clause to express the hypothetical action."
+      },
+      {
+        "task_id": 9,
+        "level": "B1",
+        "topic": "Sentence Structure",
+        "grammar_point": "relative_clauses_basics",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The student correctly uses the relative pronoun \"die\" and forms a grammatically coherent relative clause with proper word order and punctuation."
+      }
+    ],
+    "learner_profile": {
+      "current_goal": "I want to improve German for work communication.",
+      "recent_topics": [
+        "Grammar",
+        "Sentence Structure",
+        "Verb Conjugation"
+      ],
+      "recent_grammar_points": [
+        "general_grammar",
+        "subordinate_clause_weil",
+        "perfect_tense_basics"
+      ],
+      "weak_topics": [],
+      "strong_topics": [
+        "A1 Articles",
+        "A1 Negation",
+        "A2 Verb Conjugation",
+        "A2 Cases",
+        "B1 Sentence Structure",
+        "B1 Grammar"
+      ],
+      "preferred_language_support": "mixed",
+      "last_goal_type": "explanation"
+    },
+    "grammar_point_mastery": {
+      "indefinite_articles_ein_eine_einen": 1,
+      "negation_kein": 1,
+      "perfect_tense_basics": 1,
+      "accusative_with_movement": 1,
+      "subordinate_clause_weil": 1,
+      "konjunktiv_ii_basics": 0,
+      "relative_clauses_basics": 1,
+      "general_grammar": 0
+    },
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "Eval User",
+    "learner_id": "eval_stateful_user",
+    "last_active": "2026-04-25T16:30:50.367490"
+  },
+  "tutoring_a1_articles_help": {
+    "user_level": "A1",
+    "diagnostic_results": {},
+    "diagnostic_feedback": [],
+    "learner_profile": {
+      "current_goal": "Please explain the difference between ein, eine, and einen very simply.",
+      "recent_topics": [
+        "Articles",
+        "Grammar"
+      ],
+      "recent_grammar_points": [
+        "indefinite_articles_ein_eine_einen",
+        "general_grammar"
+      ],
+      "weak_topics": [],
+      "strong_topics": [],
+      "preferred_language_support": "mostly_english",
+      "last_goal_type": "practice"
+    },
+    "grammar_point_mastery": {
+      "indefinite_articles_ein_eine_einen": 0,
+      "general_grammar": 1
+    },
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "tutoring_a1_articles_help",
+    "learner_id": "tutoring_a1_articles_help",
+    "last_active": "2026-04-25T20:49:30.032726"
+  },
+  "tutoring_a2_perfekt_practice": {
+    "user_level": "A2",
+    "diagnostic_results": {},
+    "diagnostic_feedback": [],
+    "learner_profile": {
+      "current_goal": "I find Perfekt difficult. Please explain it with one short example.",
+      "recent_topics": [
+        "Verb Conjugation"
+      ],
+      "recent_grammar_points": [
+        "perfect_tense_basics"
+      ],
+      "weak_topics": [],
+      "strong_topics": [],
+      "preferred_language_support": "mixed",
+      "last_goal_type": "explanation"
+    },
+    "grammar_point_mastery": {
+      "perfect_tense_basics": 0
+    },
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "tutoring_a2_perfekt_practice",
+    "learner_id": "tutoring_a2_perfekt_practice",
+    "last_active": "2026-04-25T20:55:06.740755"
+  },
+  "gagana\\": {
+    "user_level": "A1",
+    "diagnostic_results": {
+      "1": 0,
+      "2": 0
+    },
+    "diagnostic_feedback": [
+      {
+        "task_id": 1,
+        "level": "A1",
+        "topic": "Articles",
+        "grammar_point": "indefinite_articles_ein_eine_einen",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The learner provided no answer, completely avoiding the target grammar point and failing to demonstrate any ability to produce an accusative noun phrase with an indefinite article."
+      },
+      {
+        "task_id": 2,
+        "level": "A1",
+        "topic": "Negation",
+        "grammar_point": "negation_kein",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The learner completely avoided producing any German sentence, let alone using 'kein' to negate a noun phrase."
+      }
+    ],
+    "learner_profile": {
+      "current_goal": "where to start",
+      "recent_topics": [
+        "Grammar"
+      ],
+      "recent_grammar_points": [
+        "definite_articles_basics"
+      ],
+      "weak_topics": [
+        "A1 Articles",
+        "A1 Negation"
+      ],
+      "strong_topics": [],
+      "syllabus_history": [
+        "A1-01"
+      ],
+      "current_syllabus_lesson": {
+        "mode": "guided",
+        "lesson_id": "A1-01",
+        "level": "A1",
+        "title": "Hallo!",
+        "primary_topics": [
+          "Articles"
+        ],
+        "search_query": "A1 German grammar Articles Hallo!",
+        "reason": "Using first available A1 curriculum reference."
+      },
+      "preferred_language_support": "mostly_english",
+      "last_goal_type": "general_help"
+    },
+    "grammar_point_mastery": {
+      "indefinite_articles_ein_eine_einen": 0,
+      "negation_kein": 0,
+      "definite_articles_basics": 0
+    },
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "Gagana\\",
+    "learner_id": "gagana\\",
+    "last_active": "2026-05-07T11:44:29.475218"
   }
 }

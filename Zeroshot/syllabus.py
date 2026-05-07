@@ -167,3 +167,25 @@ def format_syllabus_for_learner(level: str) -> str:
     lines.append("5. Then we decide whether to practice more or move ahead")
 
     return "\n".join(lines)
+
+
+def format_compact_learning_path(level: str) -> str:
+    path = get_learning_path_from_level(level)
+    current_level = path[0] if path else LEVEL_ORDER[0]
+    data = GERMAN_SYLLABUS[current_level]
+
+    lines = []
+
+    for topic in data["grammar_topics"][:3]:
+        lines.append(f"- {topic}")
+
+    next_level = None
+    current_index = LEVEL_ORDER.index(current_level) if current_level in LEVEL_ORDER else 0
+    if current_index + 1 < len(LEVEL_ORDER):
+        next_level = LEVEL_ORDER[current_index + 1]
+
+    if next_level:
+        lines.append("")
+        lines.append(f"After that, we can move on to {next_level} when you feel ready.")
+
+    return "\n".join(lines)

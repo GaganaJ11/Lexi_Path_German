@@ -1,18 +1,33 @@
 import requests
 from typing import Dict, List
 
-from config import OLLAMA_URL, MODEL_NAME, REQUEST_TIMEOUT
+from config import KIMI_API_KEY, KIMI_API_URL, KIMI_MODEL_NAME, REQUEST_TIMEOUT
 
 
-def call_ollama(messages: List[Dict]) -> str:
+def call_kimi(messages: List[Dict]) -> str:
+    if not KIMI_API_KEY:
+        raise RuntimeError(
+            "Missing KIMI_API_KEY. Set it in config.py or your environment before running the app."
+        )
+
     payload = {
-        "model": MODEL_NAME,
+        "model": KIMI_MODEL_NAME,
         "messages": messages,
-        "stream": False
+        "stream": False,
     }
 
-    response = requests.post(OLLAMA_URL, json=payload, timeout=REQUEST_TIMEOUT)
+    headers = {
+        "Authorization": f"Bearer {KIMI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    response = requests.post(
+        KIMI_API_URL,
+        json=payload,
+        headers=headers,
+        timeout=REQUEST_TIMEOUT,
+    )
     response.raise_for_status()
 
     data = response.json()
-    return data["message"]["content"]
+    return data["choices"][0]["message"]["content"]

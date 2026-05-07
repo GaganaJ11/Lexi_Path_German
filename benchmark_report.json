@@ -1,0 +1,854 @@
+{
+  "generated_at_epoch": 1778154800.054514,
+  "elapsed_seconds": 27.557,
+  "quick_mode": false,
+  "scenario_catalog": {
+    "diagnosis": [
+      {
+        "name": "diagnose_a1_foundation",
+        "gold_level": "A1",
+        "learner_profile": {
+          "true_level": "A1",
+          "strengths": [
+            "negation_kein"
+          ],
+          "weaknesses": [
+            "perfect_tense_basics",
+            "subordinate_clause_weil"
+          ],
+          "style": "short"
+        }
+      },
+      {
+        "name": "diagnose_a2_everyday",
+        "gold_level": "A2",
+        "learner_profile": {
+          "true_level": "A2",
+          "strengths": [
+            "perfect_tense_basics",
+            "comparatives_basics"
+          ],
+          "weaknesses": [
+            "konjunktiv_ii_basics"
+          ],
+          "style": "short"
+        }
+      },
+      {
+        "name": "diagnose_b1_structured",
+        "gold_level": "B1",
+        "learner_profile": {
+          "true_level": "B1",
+          "strengths": [
+            "subordinate_clause_weil",
+            "relative_clauses_basics"
+          ],
+          "weaknesses": [
+            "konjunktiv_ii_basics"
+          ],
+          "style": "short"
+        }
+      }
+    ],
+    "tutoring": [
+      {
+        "name": "a1_articles_help",
+        "level": "A1",
+        "messages": [
+          "Please explain the difference between ein, eine, and einen very simply.",
+          "Give me one easy practice sentence."
+        ]
+      },
+      {
+        "name": "a2_perfekt_practice",
+        "level": "A2",
+        "messages": [
+          "I find Perfekt difficult. Please explain it with one short example.",
+          "Now give me a short exercise."
+        ]
+      },
+      {
+        "name": "b1_work_communication",
+        "level": "B1",
+        "messages": [
+          "Help me improve German for work communication.",
+          "Please explain how to use weil clauses in a more natural way."
+        ]
+      }
+    ],
+    "continuity": [
+      {
+        "name": "a2_returning_perfekt",
+        "level": "A2",
+        "learner_id": "benchmark_a2_returning",
+        "display_name": "Benchmark A2",
+        "session1_messages": [
+          "I want to practice Perfekt for daily life.",
+          "Please give me one short exercise about yesterday."
+        ],
+        "session2_messages": [
+          "Can we continue from where we stopped yesterday?",
+          "Give me another short exercise now."
+        ],
+        "memory_keywords": [
+          "perfekt",
+          "yesterday",
+          "exercise"
+        ]
+      },
+      {
+        "name": "b1_returning_work_focus",
+        "level": "B1",
+        "learner_id": "benchmark_b1_returning",
+        "display_name": "Benchmark B1",
+        "session1_messages": [
+          "I want to improve German for work communication.",
+          "Please explain weil clauses and then give me one practice question."
+        ],
+        "session2_messages": [
+          "Can we continue from where we stopped yesterday?",
+          "Please give me a short work-related exercise."
+        ],
+        "memory_keywords": [
+          "work",
+          "weil",
+          "practice"
+        ]
+      }
+    ]
+  },
+  "results": [
+    {
+      "system": "Zeroshot",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a1_foundation",
+      "success": true,
+      "error": "",
+      "gold_level": "A1",
+      "detected_level": "A1",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "task_id": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 0
+        },
+        {
+          "task_id": 2,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Please write one short German sentence that negates a noun with 'kein'.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 0
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a2_everyday",
+      "success": true,
+      "error": "",
+      "gold_level": "A2",
+      "detected_level": "A1",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "task_id": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 0
+        },
+        {
+          "task_id": 2,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Please write one short German sentence that negates a noun with 'kein'.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 0
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_b1_structured",
+      "success": true,
+      "error": "",
+      "gold_level": "B1",
+      "detected_level": "A1",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "task_id": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 0
+        },
+        {
+          "task_id": 2,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Please write one short German sentence that negates a noun with 'kein'.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 0
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "tutoring",
+      "scenario_name": "a1_articles_help",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "tutoring",
+      "scenario_name": "a2_perfekt_practice",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "tutoring",
+      "scenario_name": "b1_work_communication",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "continuity",
+      "scenario_name": "a2_returning_perfekt",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Zeroshot",
+      "suite": "continuity",
+      "scenario_name": "b1_returning_work_focus",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a1_foundation",
+      "success": true,
+      "error": "",
+      "gold_level": "A1",
+      "detected_level": "A2",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "attempt": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please answer in German about Articles.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 2
+        },
+        {
+          "attempt": 2,
+          "target_level": "A2",
+          "topic": "Verb Conjugation",
+          "grammar_point": "perfect_tense_basics",
+          "question": "Please answer in German about Verb Conjugation.",
+          "learner_answer": "Ich lerne Deutsch.",
+          "score_value": 0
+        },
+        {
+          "attempt": 3,
+          "target_level": "Pre-A1",
+          "topic": "Greetings",
+          "grammar_point": "basic_greeting_phrase",
+          "question": "Please answer in German about Greetings.",
+          "learner_answer": "Hallo, ich heiße Anna.",
+          "score_value": 1
+        },
+        {
+          "attempt": 4,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Please answer in German about Negation.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 2
+        },
+        {
+          "attempt": 5,
+          "target_level": "A2",
+          "topic": "Cases",
+          "grammar_point": "accusative_with_movement",
+          "question": "Please answer in German about Cases.",
+          "learner_answer": "Ich lege das Buch auf dem Tisch.",
+          "score_value": 2
+        },
+        {
+          "attempt": 6,
+          "target_level": "B1",
+          "topic": "Sentence Structure",
+          "grammar_point": "subordinate_clause_weil",
+          "question": "Please answer in German about Sentence Structure.",
+          "learner_answer": "Ich lerne Deutsch. Ich will in Deutschland arbeiten.",
+          "score_value": 1
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a2_everyday",
+      "success": true,
+      "error": "",
+      "gold_level": "A2",
+      "detected_level": "A2",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "attempt": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please answer in German about Articles.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 2
+        },
+        {
+          "attempt": 2,
+          "target_level": "A2",
+          "topic": "Verb Conjugation",
+          "grammar_point": "perfect_tense_basics",
+          "question": "Please answer in German about Verb Conjugation.",
+          "learner_answer": "Ich habe gestern Deutsch gelernt.",
+          "score_value": 2
+        },
+        {
+          "attempt": 3,
+          "target_level": "B1",
+          "topic": "Sentence Structure",
+          "grammar_point": "subordinate_clause_weil",
+          "question": "Please answer in German about Sentence Structure.",
+          "learner_answer": "Ich lerne Deutsch, weil ich will in Deutschland arbeiten.",
+          "score_value": 1
+        },
+        {
+          "attempt": 4,
+          "target_level": "B1",
+          "topic": "Grammar",
+          "grammar_point": "konjunktiv_ii_basics",
+          "question": "Please answer in German about Grammar.",
+          "learner_answer": "Ich reise mehr.",
+          "score_value": 0
+        },
+        {
+          "attempt": 5,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Please answer in German about Negation.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 2
+        },
+        {
+          "attempt": 6,
+          "target_level": "A2",
+          "topic": "Cases",
+          "grammar_point": "accusative_with_movement",
+          "question": "Please answer in German about Cases.",
+          "learner_answer": "Ich lege das Buch auf den Tisch.",
+          "score_value": 2
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_b1_structured",
+      "success": true,
+      "error": "",
+      "gold_level": "B1",
+      "detected_level": "A2",
+      "tutor_level": "",
+      "diagnostic_trace": [
+        {
+          "attempt": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please answer in German about Articles.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 2
+        },
+        {
+          "attempt": 2,
+          "target_level": "A2",
+          "topic": "Verb Conjugation",
+          "grammar_point": "perfect_tense_basics",
+          "question": "Please answer in German about Verb Conjugation.",
+          "learner_answer": "Ich habe gestern Deutsch gelernt.",
+          "score_value": 2
+        },
+        {
+          "attempt": 3,
+          "target_level": "B1",
+          "topic": "Sentence Structure",
+          "grammar_point": "subordinate_clause_weil",
+          "question": "Please answer in German about Sentence Structure.",
+          "learner_answer": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
+          "score_value": 1
+        },
+        {
+          "attempt": 4,
+          "target_level": "B1",
+          "topic": "Grammar",
+          "grammar_point": "konjunktiv_ii_basics",
+          "question": "Please answer in German about Grammar.",
+          "learner_answer": "Ich werde mehr reisen, wenn ich Zeit hätte.",
+          "score_value": 1
+        }
+      ],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "tutoring",
+      "scenario_name": "a1_articles_help",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "tutoring",
+      "scenario_name": "a2_perfekt_practice",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "tutoring",
+      "scenario_name": "b1_work_communication",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "continuity",
+      "scenario_name": "a2_returning_perfekt",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "llmrag",
+      "suite": "continuity",
+      "scenario_name": "b1_returning_work_focus",
+      "success": false,
+      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a1_foundation",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "A1",
+      "detected_level": "",
+      "tutor_level": "",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_a2_everyday",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "A2",
+      "detected_level": "",
+      "tutor_level": "",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "diagnosis",
+      "scenario_name": "diagnose_b1_structured",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "B1",
+      "detected_level": "",
+      "tutor_level": "",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "tutoring",
+      "scenario_name": "a1_articles_help",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "tutoring",
+      "scenario_name": "a2_perfekt_practice",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "tutoring",
+      "scenario_name": "b1_work_communication",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "continuity",
+      "scenario_name": "a2_returning_perfekt",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "A2",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    },
+    {
+      "system": "Lexi_Path_German",
+      "suite": "continuity",
+      "scenario_name": "b1_returning_work_focus",
+      "success": false,
+      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "gold_level": "",
+      "detected_level": "",
+      "tutor_level": "B1",
+      "diagnostic_trace": [],
+      "session1_user": [],
+      "session1_assistant": [],
+      "session2_user": [],
+      "session2_assistant": [],
+      "retrieval_stats": {
+        "turns": 0,
+        "turns_with_chunks": 0,
+        "total_chunks": 0,
+        "fallback_turns": 0
+      },
+      "metrics": {}
+    }
+  ]
+}
