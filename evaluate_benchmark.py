@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import importlib
 import json
 import os
@@ -28,6 +29,7 @@ MODULES_TO_PURGE = [
 
 LEVEL_RANK = {"Pre-A1": 0, "A1": 1, "A2": 2, "B1": 3}
 LEXI_INVOKE_TIMEOUT_SECONDS = int(os.getenv("LEXI_INVOKE_TIMEOUT", "120"))
+DIAGNOSTIC_ANSWER_MODE = os.getenv("DIAGNOSTIC_ANSWER_MODE", "adaptive")
 
 DIAGNOSIS_SCENARIOS = [
     {
@@ -296,9 +298,125 @@ def _template_answer(grammar_point: str, quality: str, visible_question: str) ->
     return {"full": "Ich lerne Deutsch jeden Tag.", "partial": "Ich lernen Deutsch jeden Tag.", "fail": "Deutsch."}[quality]
 
 
+def _question_aware_answer(grammar_point: str, quality: str, visible_question: str, learner_profile: Dict[str, Any]) -> str:
+    """Generate a deterministic learner answer that reacts to the actual tutor question.
+
+    This is still a simulated learner, not human data. The important difference from
+    the old template-only path is that the answer is conditioned on the question text
+    produced by each system's diagnostic flow.
+    """
+    lowered = visible_question.lower()
+
+    question_specific_bank = [
+        (
+            "basic_greeting_phrase",
+            ("name", "heisse", "heiße", "vorstellen", "introduce"),
+            {
+                "full": "Hallo, ich heiße Anna.",
+                "partial": "Hallo, ich Anna.",
+                "fail": "Hallo.",
+            },
+        ),
+        (
+            "present_tense_basic_verbs",
+            ("live", "where", "wo wohnst", "wohnst du", "wohne", "wohnort"),
+            {
+                "full": "Ich wohne in Berlin.",
+                "partial": "Ich wohnen in Berlin.",
+                "fail": "Berlin.",
+            },
+        ),
+        (
+            "perfect_tense_basics",
+            ("yesterday", "gestern", "did you do", "was hast", "perfekt"),
+            {
+                "full": "Ich habe gestern Deutsch gelernt.",
+                "partial": "Ich lerne gestern Deutsch.",
+                "fail": "Ich lerne Deutsch.",
+            },
+        ),
+        (
+            "subordinate_clause_weil",
+            ("why", "warum", "weil", "reason", "begründ"),
+            {
+                "full": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
+                "partial": "Ich lerne Deutsch, weil ich will in Deutschland arbeiten.",
+                "fail": "Ich lerne Deutsch. Ich will arbeiten.",
+            },
+        ),
+        (
+            "konjunktiv_ii_basics",
+            ("polite", "höflich", "hoeflich", "would", "würde", "wuerde", "könnte", "koennte"),
+            {
+                "full": "Könnten Sie mir bitte die Datei schicken?",
+                "partial": "Sie würden mir die Datei schicken?",
+                "fail": "Schicken Sie die Datei.",
+            },
+        ),
+        (
+            "relative_clauses_basics",
+            ("relative", "relativ", "who", "that", "die mir", "der mir"),
+            {
+                "full": "Das ist die Kollegin, die mir oft hilft.",
+                "partial": "Das ist die Kollegin, die hilft mir.",
+                "fail": "Das ist meine Kollegin. Sie hilft mir.",
+            },
+        ),
+        (
+            "comparatives_basics",
+            ("compare", "vergleich", "als", "faster", "besser", "größer", "groesser"),
+            {
+                "full": "Ein Zug ist schneller als ein Fahrrad.",
+                "partial": "Ein Zug ist mehr schnell als ein Fahrrad.",
+                "fail": "Zug und Fahrrad sind schnell.",
+            },
+        ),
+        (
+            "negation_kein",
+            ("kein", "keine", "nicht", "negation", "vernein"),
+            {
+                "full": "Ich habe kein Auto.",
+                "partial": "Ich habe nicht Auto.",
+                "fail": "Ich habe Auto.",
+            },
+        ),
+        (
+            "indefinite_articles_ein_eine_einen",
+            ("ein", "eine", "einen", "article", "artikel", "apfel", "buch"),
+            {
+                "full": "Ich kaufe einen Apfel.",
+                "partial": "Ich kaufe ein Apfel.",
+                "fail": "Ich kaufe Apfel.",
+            },
+        ),
+        (
+            "accusative_with_movement",
+            ("where do you put", "wohin", "lege", "stell", "movement", "akkusativ"),
+            {
+                "full": "Ich lege das Buch auf den Tisch.",
+                "partial": "Ich lege das Buch auf dem Tisch.",
+                "fail": "Das Buch ist auf dem Tisch.",
+            },
+        ),
+    ]
+
+    for bank_grammar_point, cues, answers in question_specific_bank:
+        if grammar_point == bank_grammar_point or any(cue in lowered for cue in cues):
+            return answers[quality]
+
+    style = learner_profile.get("style", "short")
+    if style == "short" and quality == "full":
+        return _template_answer(grammar_point, quality, visible_question).split(".")[0] + "."
+
+    return _template_answer(grammar_point, quality, visible_question)
+
+
 def simulate_learner_answer(question_text: str, learner_profile: Dict[str, Any], target_level: str, grammar_point: str) -> str:
     quality = _choose_quality(learner_profile, target_level, grammar_point)
-    return _template_answer(grammar_point, quality, _extract_visible_question(question_text))
+    visible_question = _extract_visible_question(question_text)
+    if DIAGNOSTIC_ANSWER_MODE in {"template", "static"}:
+        return _template_answer(grammar_point, quality, visible_question)
+    return _question_aware_answer(grammar_point, quality, visible_question, learner_profile)
 
 
 def _metrics_from_sessions(session1: List[str], session2: List[str], memory_keywords: List[str]) -> Dict[str, Any]:
@@ -402,6 +520,7 @@ def run_diagnosis_zeroshot(scenario: Dict[str, Any]) -> BenchmarkResult:
                         "grammar_point": task["grammar_point"],
                         "question": question,
                         "learner_answer": answer,
+                        "learner_answer_mode": DIAGNOSTIC_ANSWER_MODE,
                         "score_value": evaluation["score_value"],
                     }
                 )
@@ -453,6 +572,7 @@ def run_diagnosis_llmrag(scenario: Dict[str, Any]) -> BenchmarkResult:
                         "grammar_point": attempt["grammar_point"],
                         "question": question,
                         "learner_answer": answer,
+                        "learner_answer_mode": DIAGNOSTIC_ANSWER_MODE,
                         "score_value": grade["score"],
                     }
                 )
@@ -499,6 +619,7 @@ def run_diagnosis_lexi(scenario: Dict[str, Any]) -> BenchmarkResult:
                         "grammar_point": task["grammar_point"],
                         "question": _extract_visible_question(prompt),
                         "learner_answer": answer,
+                        "learner_answer_mode": DIAGNOSTIC_ANSWER_MODE,
                         "score_value": state.get("diagnostic_results", {}).get(current_id, 0),
                     }
                 )
@@ -864,9 +985,17 @@ def _result_to_json(result: BenchmarkResult) -> Dict[str, Any]:
 
 
 def main() -> None:
+    global DIAGNOSTIC_ANSWER_MODE
+
     parser = argparse.ArgumentParser(description="Run benchmark evaluation suites for Zeroshot, llmrag, and Lexi_Path_German")
     parser.add_argument("--output", default="benchmark_report.json", help="Output benchmark report path")
     parser.add_argument("--quick", action="store_true", help="Run one scenario per suite for a faster smoke test")
+    parser.add_argument(
+        "--diagnostic-answer-mode",
+        default=DIAGNOSTIC_ANSWER_MODE,
+        choices=["adaptive", "template", "static"],
+        help="How simulated learners answer diagnostic questions. Use adaptive for question-aware paper-aligned simulation.",
+    )
     parser.add_argument(
         "--systems",
         nargs="*",
@@ -875,6 +1004,7 @@ def main() -> None:
         help="Subset of systems to evaluate",
     )
     args = parser.parse_args()
+    DIAGNOSTIC_ANSWER_MODE = args.diagnostic_answer_mode
 
     diagnosis_runners = {
         "zeroshot": run_diagnosis_zeroshot,
@@ -916,6 +1046,15 @@ def main() -> None:
         "generated_at_epoch": time.time(),
         "elapsed_seconds": round(time.time() - started, 3),
         "quick_mode": args.quick,
+        "benchmark_design": {
+            "diagnostic_answer_mode": DIAGNOSTIC_ANSWER_MODE,
+            "diagnostic_answer_source": "question_aware_simulated_learner",
+            "diagnostic_answer_note": (
+                "Diagnostic learner answers are deterministic simulations conditioned on "
+                "the generated diagnostic question, learner profile, target level, and grammar point. "
+                "They are not human response data."
+            ),
+        },
         "scenario_catalog": {
             "diagnosis": diagnosis_scenarios,
             "tutoring": tutoring_scenarios,

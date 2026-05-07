@@ -287,13 +287,14 @@
       }
     ],
     "learner_profile": {
-      "current_goal": "Let's start as per your suggestion",
+      "current_goal": "Let's start however you want as you are the tutor",
       "recent_topics": [
         "Grammar"
       ],
       "recent_grammar_points": [
         "general_grammar",
-        "konjunktiv_ii_basics"
+        "konjunktiv_ii_basics",
+        "present_tense_basic_verbs"
       ],
       "weak_topics": [],
       "strong_topics": [
@@ -305,7 +306,7 @@
         "B1 Grammar"
       ],
       "preferred_language_support": "mixed",
-      "last_goal_type": "study_plan",
+      "last_goal_type": "practice",
       "syllabus_history": [
         "A2-01"
       ],
@@ -330,13 +331,33 @@
       "subordinate_clause_weil": 1,
       "konjunktiv_ii_basics": 0,
       "relative_clauses_basics": 1,
-      "general_grammar": 0
+      "general_grammar": 0,
+      "present_tense_basic_verbs": 0
     },
+    "level_source": "diagnostic",
+    "level_confidence": "medium",
+    "level_change_rationale": "\"Let's go\" is a generic phrase indicating readiness to start, with no mention or implication of changing German level.",
+    "level_progression_status": {
+      "level": "A2",
+      "required_points": [
+        "perfect_tense_basics",
+        "accusative_with_movement",
+        "comparatives_basics"
+      ],
+      "mastered_points": [],
+      "missing_points": [
+        "perfect_tense_basics",
+        "accusative_with_movement",
+        "comparatives_basics"
+      ],
+      "ready_for_promotion": false
+    },
+    "level_promoted": false,
     "phase": "tutoring",
     "intro_shown": true,
     "display_name": "Gagana",
     "learner_id": "gagana",
-    "last_active": "2026-05-07T16:55:30.755671"
+    "last_active": "2026-05-07T19:26:02.750226"
   },
   "aishwarya": {
     "user_level": "A1",

@@ -8,7 +8,7 @@ The project expects a PostgreSQL server with `pgvector` enabled. If you get erro
 
 docker run --name lexipath-pgvector \
   -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=mypassword \
+  -e POSTGRES_PASSWORD=your_postgres_password \
   -e POSTGRES_DB=postgres \
   -p 5432:5432 \
   -d pgvector/pgvector:pg17
@@ -42,4 +42,25 @@ Run this command: pip install langchain-huggingface
 Run this command: python adder.py
 python retriever.py
 python app.py
+```
+
+## Local configuration
+
+Open `config.py` and fill in the two values at the top:
+
+```python
+NVIDIA_API_KEY = "your_nvidia_api_key_here"
+DATABASE_URL = "postgresql+psycopg://postgres:your_postgres_password@localhost:5432/postgres"
+```
+
+Do not share or commit `config.py` after adding a real API key.
+
+## Corpus mode
+
+`adder.py` uses the paper-aligned curated corpus by default. It ingests 1,240 retrieval chunks from the larger JSONL source.
+
+To ingest the full expanded corpus instead:
+
+```bash
+CORPUS_MODE = "full"
 ```

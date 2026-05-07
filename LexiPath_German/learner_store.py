@@ -72,6 +72,11 @@ def build_learner_snapshot(state: Dict[str, Any]) -> Dict[str, Any]:
         "diagnostic_feedback": state.get("diagnostic_feedback", []),
         "learner_profile": state.get("learner_profile", {}),
         "grammar_point_mastery": state.get("grammar_point_mastery", {}),
+        "level_source": state.get("level_source", "unknown"),
+        "level_confidence": state.get("level_confidence", "low"),
+        "level_change_rationale": state.get("level_change_rationale", ""),
+        "level_progression_status": state.get("level_progression_status", {}),
+        "level_promoted": state.get("level_promoted", False),
         "phase": state.get("phase", "diagnostic"),
         "intro_shown": state.get("intro_shown", False),
     }

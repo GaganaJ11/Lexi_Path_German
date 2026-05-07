@@ -1,14 +1,21 @@
 import json
 import re
-from typing import Dict, Iterable, List
+from collections import defaultdict
+from typing import Dict, Iterable, List, Tuple
 
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
 
-CONNECTION_STRING = "postgresql+psycopg://postgres:mypassword@localhost:5432/postgres"
-COLLECTION_NAME = "lexipath_grammar_v2"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+from config import (
+    COLLECTION_NAME,
+    CORPUS_MODE,
+    EMBEDDING_MODEL,
+    PAPER_ALIGNED_CORPUS_SIZE,
+    PAPER_RULE_TARGET,
+    get_database_url,
+)
+
 SOURCE_FILE = "LexiPath_Final_Knowledge_Base.jsonl"
 
 RULE_SOURCES = {"DiscoResearch"}
@@ -332,6 +339,118 @@ def build_example_chunks(text: str, metadata: Dict[str, str]) -> List[Document]:
     return chunks
 
 
+def _document_key(document: Document) -> Tuple[str, str, str, str, str]:
+    metadata = document.metadata
+    return (
+        str(metadata.get("source", "")),
+        str(metadata.get("level", "")),
+        str(metadata.get("topic", "")),
+        str(metadata.get("lesson_id", "")),
+        normalize_text(document.page_content),
+    )
+
+
+def _deduplicate_documents(documents: List[Document]) -> List[Document]:
+    seen = set()
+    unique_documents = []
+    for document in documents:
+        key = _document_key(document)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_documents.append(document)
+    return unique_documents
+
+
+def _stable_sort_key(document: Document) -> Tuple[str, str, str, str, str]:
+    metadata = document.metadata
+    return (
+        str(metadata.get("level", "")),
+        str(metadata.get("topic", "")),
+        str(metadata.get("grammar_point", "")),
+        str(metadata.get("lesson_id", "")),
+        normalize_text(document.page_content),
+    )
+
+
+def _round_robin_select(documents: List[Document], target: int, group_fields: Tuple[str, ...]) -> List[Document]:
+    grouped: Dict[Tuple[str, ...], List[Document]] = defaultdict(list)
+    for document in sorted(documents, key=_stable_sort_key):
+        key = tuple(str(document.metadata.get(field, "")) for field in group_fields)
+        grouped[key].append(document)
+
+    selected = []
+    group_keys = sorted(grouped)
+    while len(selected) < target and group_keys:
+        remaining_keys = []
+        for key in group_keys:
+            if grouped[key] and len(selected) < target:
+                selected.append(grouped[key].pop(0))
+            if grouped[key]:
+                remaining_keys.append(key)
+        group_keys = remaining_keys
+
+    return selected
+
+
+def curate_paper_aligned_documents(documents: List[Document], target_size: int = PAPER_ALIGNED_CORPUS_SIZE) -> List[Document]:
+    """Create the smaller curated retrieval corpus described in the paper.
+
+    The raw JSONL is larger than the corpus size reported in the paper. This
+    deterministic curation keeps manual grammar anchors, balances rule/example
+    chunks, and samples across level/topic/grammar metadata so ingestion is
+    reproducible instead of depending on source-file ordering.
+    """
+    documents = _deduplicate_documents(documents)
+    manual_documents = [
+        document for document in documents
+        if document.metadata.get("source") == "LexiPath_ManualRules"
+    ]
+    rule_documents = [
+        document for document in documents
+        if document.metadata.get("chunk_type") == "rule"
+        and document.metadata.get("source") != "LexiPath_ManualRules"
+    ]
+    example_documents = [
+        document for document in documents
+        if document.metadata.get("chunk_type") == "example"
+    ]
+
+    if target_size <= len(manual_documents):
+        return sorted(manual_documents, key=_stable_sort_key)[:target_size]
+
+    rule_target = min(PAPER_RULE_TARGET, len(rule_documents), max(target_size - len(manual_documents), 0))
+    example_target = max(target_size - len(manual_documents) - rule_target, 0)
+
+    curated = sorted(manual_documents, key=_stable_sort_key)
+    curated.extend(_round_robin_select(rule_documents, rule_target, ("level", "topic", "grammar_point")))
+    curated.extend(_round_robin_select(example_documents, example_target, ("level", "topic", "grammar_point", "lesson_id")))
+
+    if len(curated) < target_size:
+        selected_keys = {_document_key(document) for document in curated}
+        leftovers = [
+            document for document in sorted(documents, key=_stable_sort_key)
+            if _document_key(document) not in selected_keys
+        ]
+        curated.extend(leftovers[:target_size - len(curated)])
+
+    return curated[:target_size]
+
+
+def corpus_summary(documents: List[Document]) -> Dict[str, Dict[str, int]]:
+    summary: Dict[str, Dict[str, int]] = {
+        "source": {},
+        "level": {},
+        "chunk_type": {},
+        "topic": {},
+    }
+    for document in documents:
+        for field in summary:
+            value = str(document.metadata.get(field, "unknown"))
+            summary[field][value] = summary[field].get(value, 0) + 1
+    return summary
+
+
 def load_source_records(path: str) -> Iterable[Dict]:
     with open(path, "r", encoding="utf-8") as handle:
         for line in handle:
@@ -373,20 +492,24 @@ def build_documents(path: str) -> List[Document]:
             if looks_like_rule_text(cleaned_content):
                 all_documents.extend(build_rule_chunks(cleaned_content, base_metadata))
 
-    return all_documents
+    if CORPUS_MODE in {"paper_curated", "curated"}:
+        return curate_paper_aligned_documents(all_documents, PAPER_ALIGNED_CORPUS_SIZE)
+
+    return _deduplicate_documents(all_documents)
 
 
 def ingest_documents(documents: List[Document], reset_collection: bool = False) -> None:
     print(f"Loading embedding model: {EMBEDDING_MODEL}", flush=True)
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     print("Embedding model loaded.", flush=True)
+    database_url = get_database_url()
 
     if reset_collection:
         try:
             temp_store = PGVector(
                 embeddings=embeddings,
                 collection_name=COLLECTION_NAME,
-                connection=CONNECTION_STRING,
+                connection=database_url,
                 use_jsonb=True,
             )
             temp_store.delete_collection()
@@ -397,12 +520,14 @@ def ingest_documents(documents: List[Document], reset_collection: bool = False) 
     vector_store = PGVector(
         embeddings=embeddings,
         collection_name=COLLECTION_NAME,
-        connection=CONNECTION_STRING,
+        connection=database_url,
         use_jsonb=True,
     )
 
     batch_size = 50
     print(f"Prepared {len(documents)} retrieval documents for ingestion into {COLLECTION_NAME}.", flush=True)
+    print(f"Corpus mode: {CORPUS_MODE}", flush=True)
+    print(f"Corpus summary: {json.dumps(corpus_summary(documents), sort_keys=True)}", flush=True)
 
     for start in range(0, len(documents), batch_size):
         batch = documents[start:start + batch_size]

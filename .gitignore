@@ -10,3 +10,7 @@ __pycache__/
 
 # OS files
 .DS_Store
+
+# Local secrets/config
+.env
+LexiPath_German/.env

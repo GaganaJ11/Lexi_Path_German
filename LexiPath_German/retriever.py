@@ -1,13 +1,12 @@
 import re
 from functools import lru_cache
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
 
-CONNECTION_STRING = "postgresql+psycopg://postgres:mypassword@localhost:5432/postgres"
-COLLECTION_NAME = "lexipath_grammar_v2"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+from config import COLLECTION_NAME, EMBEDDING_MODEL, get_database_url
+
 TRUSTED_SOURCES = (
     "LexiPath_ManualRules",
     "Nicos-Weg-GitHub",
@@ -60,7 +59,7 @@ def get_vector_store():
     return PGVector(
         embeddings=embeddings,
         collection_name=COLLECTION_NAME,
-        connection=CONNECTION_STRING,
+        connection=get_database_url(),
         use_jsonb=True,
     )
 
@@ -104,7 +103,13 @@ def deduplicate_documents(documents):
     unique = []
     seen = set()
     for doc in documents:
-        key = (doc.page_content, tuple(sorted(doc.metadata.items())))
+        if doc.metadata.get("source") not in TRUSTED_SOURCES:
+            continue
+        stable_metadata = {
+            key: value for key, value in doc.metadata.items()
+            if key != "learner_state_score"
+        }
+        key = (doc.page_content, tuple(sorted(stable_metadata.items())))
         if key in seen:
             continue
         seen.add(key)
@@ -112,45 +117,217 @@ def deduplicate_documents(documents):
     return unique
 
 
-def retrieve_rule_chunks(query: str, user_level: str, grammar_point: str, k: int):
+def _as_list(value: Any) -> List[str]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value if item]
+    return [str(value)]
+
+
+def _normalize_signal(value: str) -> str:
+    return normalize_text(str(value).replace("_", " "))
+
+
+def _signal_matches_document(signal: str, doc) -> bool:
+    normalized_signal = _normalize_signal(signal)
+    metadata = doc.metadata
+    searchable = " ".join(
+        [
+            str(metadata.get("level", "")),
+            str(metadata.get("topic", "")),
+            str(metadata.get("grammar_point", "")).replace("_", " "),
+            str(metadata.get("lesson_id", "")),
+            doc.page_content[:240],
+        ]
+    )
+    return normalized_signal.strip() in _normalize_signal(searchable)
+
+
+def _current_goal_keywords(learner_profile: Dict[str, Any]) -> List[str]:
+    goal = str(learner_profile.get("current_goal", ""))
+    words = re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}", goal.lower())
+    stopwords = {
+        "want", "would", "like", "please", "practice", "learn", "german",
+        "deutsch", "today", "help", "with", "about", "improve",
+    }
+    return [word for word in words if word not in stopwords][:8]
+
+
+def _state_focus_grammar_points(
+    grammar_point: str,
+    learner_profile: Optional[Dict[str, Any]],
+    grammar_point_mastery: Optional[Dict[str, int]],
+) -> List[str]:
+    focus = [grammar_point]
+    learner_profile = learner_profile or {}
+    grammar_point_mastery = grammar_point_mastery or {}
+
+    focus.extend(_as_list(learner_profile.get("recent_grammar_points"))[-3:])
+    focus.extend(
+        grammar_point
+        for grammar_point, score in grammar_point_mastery.items()
+        if score <= 1
+    )
+
+    seen = set()
+    ordered = []
+    for item in focus:
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered[:4]
+
+
+def learner_state_score(
+    doc,
+    target_grammar_point: str,
+    learner_profile: Optional[Dict[str, Any]],
+    grammar_point_mastery: Optional[Dict[str, int]],
+) -> float:
+    learner_profile = learner_profile or {}
+    grammar_point_mastery = grammar_point_mastery or {}
+    metadata = doc.metadata
+    doc_topic = str(metadata.get("topic", ""))
+    doc_level = str(metadata.get("level", ""))
+    doc_grammar_point = str(metadata.get("grammar_point", ""))
+
+    score = 0.0
+    if doc_grammar_point == target_grammar_point:
+        score += 2.0
+
+    for weak_signal in _as_list(learner_profile.get("weak_topics")):
+        if _signal_matches_document(weak_signal, doc):
+            score += 1.4
+
+    for recent_topic in _as_list(learner_profile.get("recent_topics")):
+        if recent_topic == doc_topic or _signal_matches_document(recent_topic, doc):
+            score += 0.8
+
+    for recent_gp in _as_list(learner_profile.get("recent_grammar_points")):
+        if recent_gp == doc_grammar_point:
+            score += 1.0
+
+    for keyword in _current_goal_keywords(learner_profile):
+        if keyword in normalize_text(doc.page_content):
+            score += 0.4
+
+    mastery = grammar_point_mastery.get(doc_grammar_point)
+    if mastery is not None and mastery <= 1:
+        score += 1.2
+    elif mastery is not None and mastery >= 3 and doc_grammar_point != target_grammar_point:
+        score -= 0.8
+
+    for strong_signal in _as_list(learner_profile.get("strong_topics")):
+        if _signal_matches_document(strong_signal, doc) and doc_grammar_point != target_grammar_point:
+            score -= 0.6
+
+    if doc_level and any(doc_level in signal for signal in _as_list(learner_profile.get("weak_topics"))):
+        score += 0.3
+
+    return score
+
+
+def rerank_by_learner_state(
+    documents,
+    grammar_point: str,
+    learner_profile: Optional[Dict[str, Any]] = None,
+    grammar_point_mastery: Optional[Dict[str, int]] = None,
+):
+    ranked = []
+    for original_rank, doc in enumerate(deduplicate_documents(documents)):
+        state_score = learner_state_score(doc, grammar_point, learner_profile, grammar_point_mastery)
+        doc.metadata["learner_state_score"] = round(state_score, 3)
+        ranked.append((state_score, -original_rank, doc))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [doc for _, _, doc in ranked]
+
+
+def retrieval_focus_summary(
+    grammar_point: str,
+    learner_profile: Optional[Dict[str, Any]],
+    grammar_point_mastery: Optional[Dict[str, int]],
+) -> Dict[str, Any]:
+    learner_profile = learner_profile or {}
+    grammar_point_mastery = grammar_point_mastery or {}
+    return {
+        "focus_grammar_points": _state_focus_grammar_points(
+            grammar_point,
+            learner_profile,
+            grammar_point_mastery,
+        ),
+        "weak_topics": _as_list(learner_profile.get("weak_topics"))[-6:],
+        "recent_topics": _as_list(learner_profile.get("recent_topics"))[-5:],
+        "recent_grammar_points": _as_list(learner_profile.get("recent_grammar_points"))[-5:],
+        "low_mastery_grammar_points": [
+            grammar_point
+            for grammar_point, score in grammar_point_mastery.items()
+            if score <= 1
+        ],
+    }
+
+
+def retrieve_rule_chunks(
+    query: str,
+    user_level: str,
+    grammar_point: str,
+    k: int,
+    learner_profile: Optional[Dict[str, Any]] = None,
+    grammar_point_mastery: Optional[Dict[str, int]] = None,
+):
     documents = []
+    focus_grammar_points = _state_focus_grammar_points(grammar_point, learner_profile, grammar_point_mastery)
+    candidate_k = max(k * 3, 6)
 
     for level in LEVEL_FALLBACKS.get(user_level, [user_level]):
         for source in ("LexiPath_ManualRules", "DiscoResearch", "Avemio_ReasoningDE"):
+            for focus_grammar_point in focus_grammar_points:
+                documents.extend(
+                    search_documents(
+                        query,
+                        {
+                            "level": level,
+                            "source": source,
+                            "chunk_type": "rule",
+                            "grammar_point": focus_grammar_point,
+                        },
+                        candidate_k,
+                    )
+                )
+        if documents:
+            break
+
+    return rerank_by_learner_state(documents, grammar_point, learner_profile, grammar_point_mastery)[:k]
+
+
+def retrieve_example_chunks(
+    query: str,
+    user_level: str,
+    topic: str,
+    grammar_point: str,
+    k: int,
+    learner_profile: Optional[Dict[str, Any]] = None,
+    grammar_point_mastery: Optional[Dict[str, int]] = None,
+):
+    documents = []
+    focus_grammar_points = _state_focus_grammar_points(grammar_point, learner_profile, grammar_point_mastery)
+    candidate_k = max(k * 3, 8)
+
+    for level in LEVEL_FALLBACKS.get(user_level, [user_level]):
+        for focus_grammar_point in focus_grammar_points:
             documents.extend(
                 search_documents(
                     query,
                     {
                         "level": level,
-                        "source": source,
-                        "chunk_type": "rule",
-                        "grammar_point": grammar_point,
+                        "source": "Nicos-Weg-GitHub",
+                        "chunk_type": "example",
+                        "grammar_point": focus_grammar_point,
                     },
-                    k,
+                    candidate_k,
                 )
             )
-        if documents:
-            break
-
-    return deduplicate_documents(documents)[:k]
-
-
-def retrieve_example_chunks(query: str, user_level: str, topic: str, grammar_point: str, k: int):
-    documents = []
-
-    for level in LEVEL_FALLBACKS.get(user_level, [user_level]):
-        documents.extend(
-            search_documents(
-                query,
-                {
-                    "level": level,
-                    "source": "Nicos-Weg-GitHub",
-                    "chunk_type": "example",
-                    "grammar_point": grammar_point,
-                },
-                k * 2,
-            )
-        )
         if documents:
             break
 
@@ -171,7 +348,7 @@ def retrieve_example_chunks(query: str, user_level: str, topic: str, grammar_poi
             if documents:
                 break
 
-    return deduplicate_documents(documents)[:k]
+    return rerank_by_learner_state(documents, grammar_point, learner_profile, grammar_point_mastery)[:k]
 
 
 def format_bundle(rule_documents, example_documents, topic: str, grammar_point: str, used_fallback: bool):
@@ -187,6 +364,7 @@ def format_bundle(rule_documents, example_documents, topic: str, grammar_point: 
             "level": doc.metadata.get("level", "A1"),
             "chunk_type": doc.metadata.get("chunk_type", "unknown"),
             "grammar_point": doc.metadata.get("grammar_point", grammar_point),
+            "learner_state_score": doc.metadata.get("learner_state_score", 0),
             "preview": doc.page_content[:160].replace("\n", " "),
         }
         for doc in ordered
@@ -200,18 +378,47 @@ def format_bundle(rule_documents, example_documents, topic: str, grammar_point: 
     }
 
 
-def retrieve_context_bundle(query: str, user_level: str, topic_hint: str = None, k: int = 5):
+def retrieve_context_bundle(
+    query: str,
+    user_level: str,
+    topic_hint: str = None,
+    k: int = 5,
+    learner_profile: Optional[Dict[str, Any]] = None,
+    grammar_point_mastery: Optional[Dict[str, int]] = None,
+):
     topic = topic_hint or infer_topic(query)
     grammar_point = infer_grammar_point(query, topic)
 
-    rule_documents = retrieve_rule_chunks(query, user_level, grammar_point, k=1)
-    example_documents = retrieve_example_chunks(query, user_level, topic, grammar_point, k=max(k - 1, 1))
+    rule_documents = retrieve_rule_chunks(
+        query,
+        user_level,
+        grammar_point,
+        k=1,
+        learner_profile=learner_profile,
+        grammar_point_mastery=grammar_point_mastery,
+    )
+    example_documents = retrieve_example_chunks(
+        query,
+        user_level,
+        topic,
+        grammar_point,
+        k=max(k - 1, 1),
+        learner_profile=learner_profile,
+        grammar_point_mastery=grammar_point_mastery,
+    )
 
     used_fallback = False
     if not rule_documents:
         used_fallback = True
 
-    return format_bundle(rule_documents, example_documents, topic, grammar_point, used_fallback)
+    bundle = format_bundle(rule_documents, example_documents, topic, grammar_point, used_fallback)
+    bundle["retrieval_focus"] = retrieval_focus_summary(
+        grammar_point,
+        learner_profile,
+        grammar_point_mastery,
+    )
+    bundle["learner_state_used"] = bool(learner_profile or grammar_point_mastery)
+    return bundle
 
 
 if __name__ == "__main__":

@@ -1,22 +1,28 @@
 import re
-import os
 import time
 from typing import Any, Dict, List, TypedDict
 
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from langgraph.graph import END, START, StateGraph
 
+from config import (
+    NVIDIA_MAX_COMPLETION_TOKENS,
+    NVIDIA_MODEL,
+    NVIDIA_TEMPERATURE,
+    NVIDIA_TOP_P,
+    get_nvidia_api_key,
+)
 from curriculum import format_syllabus_reference, select_syllabus_reference
 from diagnostic_logic import DiagnosticManager
 from learner_store import build_learner_snapshot, learner_exists, load_learner, save_learner
 from retriever import retrieve_context_bundle
 
 llm = ChatNVIDIA(
-  model="moonshotai/kimi-k2.6",
-  api_key="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",
-  temperature=1,
-  top_p=1,
-  max_completion_tokens=2048,
+  model=NVIDIA_MODEL,
+  api_key=get_nvidia_api_key(),
+  temperature=NVIDIA_TEMPERATURE,
+  top_p=NVIDIA_TOP_P,
+  max_completion_tokens=NVIDIA_MAX_COMPLETION_TOKENS,
 )
 
 LEVEL_GUIDELINES = {
@@ -24,6 +30,28 @@ LEVEL_GUIDELINES = {
     "A2": "Use clear explanations with one or two linked ideas and everyday examples.",
     "B1": "Use fuller explanations, contrast patterns when helpful, and include one extension tip.",
 }
+
+CEFR_LEVEL_ORDER = ["A1", "A2", "B1"]
+
+CEFR_PROMOTION_REQUIREMENTS = {
+    "A1": [
+        "indefinite_articles_ein_eine_einen",
+        "negation_kein",
+        "present_tense_basic_verbs",
+    ],
+    "A2": [
+        "perfect_tense_basics",
+        "accusative_with_movement",
+        "comparatives_basics",
+    ],
+    "B1": [
+        "subordinate_clause_weil",
+        "konjunktiv_ii_basics",
+        "relative_clauses_basics",
+    ],
+}
+
+CEFR_PROMOTION_MASTERY_THRESHOLD = 2
 
 
 def default_learner_profile():
@@ -35,6 +63,7 @@ def default_learner_profile():
         "strong_topics": [],
         "syllabus_history": [],
         "current_syllabus_lesson": {},
+        "level_progression_history": [],
         "preferred_language_support": "mostly_english",
         "last_goal_type": "",
     }
@@ -59,6 +88,7 @@ class TutorState(TypedDict, total=False):
     retrieved_context: str
     retrieved_documents: List[Dict[str, str]]
     retrieval_used_fallback: bool
+    retrieval_focus: Dict[str, Any]
     syllabus_reference: Dict[str, Any]
     lesson_plan: Dict[str, Any]
 
@@ -85,6 +115,8 @@ class TutorState(TypedDict, total=False):
     level_change_intent: str
     requested_level: str
     level_change_rationale: str
+    level_progression_status: Dict[str, Any]
+    level_promoted: bool
 
 
 def get_latest_user_message(messages):
@@ -693,6 +725,7 @@ def retrieve_context(state):
             "retrieved_context": "",
             "retrieved_documents": [],
             "retrieval_used_fallback": False,
+            "retrieval_focus": {},
             "syllabus_reference": syllabus_reference,
             "topic_hint": topic_hint,
             "grammar_point": "",
@@ -707,6 +740,8 @@ def retrieve_context(state):
         user_level=user_level,
         topic_hint=topic_hint,
         k=5,
+        learner_profile=state.get("learner_profile", default_learner_profile()),
+        grammar_point_mastery=state.get("grammar_point_mastery", default_grammar_point_mastery()),
     )
     return {
         "topic_hint": bundle["topic"],
@@ -714,6 +749,7 @@ def retrieve_context(state):
         "retrieved_context": bundle["context_text"],
         "retrieved_documents": bundle["documents"],
         "retrieval_used_fallback": bundle["used_fallback"],
+        "retrieval_focus": bundle.get("retrieval_focus", {}),
         "syllabus_reference": syllabus_reference,
     }
 
@@ -923,6 +959,82 @@ def update_mastery_from_session(grammar_point_mastery, state):
         mastery[grammar_point] = clamp_mastery(current)
 
     return mastery
+
+
+def get_next_cefr_level(level):
+    try:
+        current_index = CEFR_LEVEL_ORDER.index(level)
+    except ValueError:
+        return None
+
+    next_index = current_index + 1
+    if next_index >= len(CEFR_LEVEL_ORDER):
+        return None
+    return CEFR_LEVEL_ORDER[next_index]
+
+
+def level_mastery_status(level, grammar_point_mastery):
+    required_points = CEFR_PROMOTION_REQUIREMENTS.get(level, [])
+    mastery = grammar_point_mastery or {}
+    mastered_points = [
+        grammar_point
+        for grammar_point in required_points
+        if mastery.get(grammar_point, 0) >= CEFR_PROMOTION_MASTERY_THRESHOLD
+    ]
+    missing_points = [
+        grammar_point
+        for grammar_point in required_points
+        if grammar_point not in mastered_points
+    ]
+    return {
+        "level": level,
+        "required_points": required_points,
+        "mastered_points": mastered_points,
+        "missing_points": missing_points,
+        "ready_for_promotion": bool(required_points) and not missing_points,
+    }
+
+
+def evaluate_cefr_progression(state, grammar_point_mastery):
+    current_level = state.get("user_level", "A1")
+    next_level = get_next_cefr_level(current_level)
+
+    status = level_mastery_status(current_level, grammar_point_mastery)
+    progression = {
+        "level_progression_status": status,
+        "level_promoted": False,
+    }
+
+    if not next_level or not status["ready_for_promotion"]:
+        return progression
+
+    return {
+        **progression,
+        "level_promoted": True,
+        "previous_level": current_level,
+        "new_level": next_level,
+        "promotion_reason": (
+            f"All required {current_level} grammar points reached mastery "
+            f"{CEFR_PROMOTION_MASTERY_THRESHOLD}+."
+        ),
+    }
+
+
+def apply_level_progression_to_profile(profile, progression):
+    if not progression.get("level_promoted"):
+        return profile
+
+    profile = dict(profile or default_learner_profile())
+    history = list(profile.get("level_progression_history", []))
+    history.append(
+        {
+            "from_level": progression["previous_level"],
+            "to_level": progression["new_level"],
+            "reason": progression["promotion_reason"],
+        }
+    )
+    profile["level_progression_history"] = history[-10:]
+    return profile
 
 
 def summarize_grammar_point_mastery(grammar_point_mastery):
@@ -1347,11 +1459,24 @@ def session_memory_update(state):
         state.get("grammar_point_mastery", default_grammar_point_mastery()),
         state,
     )
+    progression = evaluate_cefr_progression(state, grammar_point_mastery)
+    profile = apply_level_progression_to_profile(profile, progression)
 
     updated = {
         "learner_profile": profile,
         "grammar_point_mastery": grammar_point_mastery,
+        "level_progression_status": progression.get("level_progression_status", {}),
+        "level_promoted": progression.get("level_promoted", False),
     }
+    if progression.get("level_promoted"):
+        updated.update(
+            {
+                "user_level": progression["new_level"],
+                "level_source": "automatic_mastery_progression",
+                "level_confidence": "medium",
+                "level_change_rationale": progression["promotion_reason"],
+            }
+        )
 
     learner_id = state.get("learner_id", "").strip()
     if learner_id:
@@ -1478,6 +1603,8 @@ def build_initial_state(learner_id: str, display_name: str) -> Dict[str, Any]:
         "level_change_intent": "NO",
         "requested_level": "NONE",
         "level_change_rationale": "",
+        "level_progression_status": {},
+        "level_promoted": False,
     }
 
 
@@ -1504,6 +1631,8 @@ def build_state_from_saved_learner(learner_id: str, saved: Dict[str, Any]) -> Di
         "level_change_intent": "NO",
         "requested_level": "NONE",
         "level_change_rationale": "",
+        "level_progression_status": saved.get("level_progression_status", {}),
+        "level_promoted": False,
     }
 
 
