@@ -8,6 +8,7 @@ DIAGNOSTIC_TASKS = [
         "prompt_goal": "Check whether the learner can produce a simple accusative noun phrase with an indefinite article.",
         "criteria": "The answer should clearly show an accusative masculine phrase such as 'einen Apfel'.",
         "example_answer": "Der Mann isst einen Apfel.",
+        "question": 'Fill in the blank with the correct German article: "Ich sehe ___ Bruder." You can answer with just the missing word.',
     },
     {
         "id": 2,
@@ -17,73 +18,81 @@ DIAGNOSTIC_TASKS = [
         "prompt_goal": "Check whether the learner can negate a noun phrase with 'kein'.",
         "criteria": "The answer should use 'kein' or an inflected form like 'keine' correctly.",
         "example_answer": "Nein, ich habe kein Auto.",
+        "question": 'Fill in the blank with the correct German negation: "Das ist ___ Apfel." You can answer with just the missing word.',
     },
     {
         "id": 3,
         "level": "A1",
-        "topic": "Verb Conjugation",
+        "topic": "Present tense",
         "grammar_point": "present_tense_basic_verbs",
         "prompt_goal": "Check whether the learner can write one simple present-tense sentence about themselves.",
         "criteria": "The answer should contain a clear present-tense sentence such as 'Ich wohne in Berlin.'",
         "example_answer": "Ich wohne in Berlin.",
+        "question": 'Write one complete German sentence about something you do every day. Start with "Ich".',
     },
 
     # A2
     {
         "id": 4,
         "level": "A2",
-        "topic": "Verb Conjugation",
+        "topic": "Present tense",
         "grammar_point": "perfect_tense_basics",
         "prompt_goal": "Check whether the learner can describe a completed past action with Perfekt.",
         "criteria": "The answer should use a helper verb and a past participle appropriately.",
         "example_answer": "Ich habe gestern Deutsch gelernt.",
+        "question": 'Write one German sentence about what you did yesterday. Use Perfekt, for example with "habe" or "bin".',
     },
     {
         "id": 5,
         "level": "A2",
-        "topic": "Cases",
+        "topic": "Basic prepositions",
         "grammar_point": "accusative_with_movement",
         "prompt_goal": "Check whether the learner can use a two-way preposition with movement and accusative.",
         "criteria": "The answer should show movement toward a destination, such as 'auf den Tisch'.",
         "example_answer": "Ich lege das Buch auf den Tisch.",
+        "question": 'Write one German sentence showing movement toward a place, using a phrase like "auf den", "in die", or "an das".',
     },
     {
         "id": 6,
         "level": "A2",
-        "topic": "Grammar",
+        "topic": "Sentence structure",
         "grammar_point": "comparatives_basics",
         "prompt_goal": "Check whether the learner can compare two things with a comparative and 'als'.",
         "criteria": "The answer should include a comparative form plus 'als'.",
         "example_answer": "Ein Auto ist schneller als ein Fahrrad.",
+        "question": 'Write one German sentence comparing two things. Use a comparative form and "als".',
     },
 
     # B1
     {
         "id": 7,
         "level": "B1",
-        "topic": "Sentence Structure",
+        "topic": "Sentence structure",
         "grammar_point": "subordinate_clause_weil",
         "prompt_goal": "Check whether the learner can produce a 'weil' clause with the verb at the end.",
         "criteria": "The answer should contain a subordinate clause introduced by 'weil' with final verb placement.",
         "example_answer": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
+        "question": 'Answer in German: Why are you learning German? Use "weil" and put the verb at the end of the weil-clause.',
     },
     {
         "id": 8,
         "level": "B1",
-        "topic": "Grammar",
+        "topic": "Modal verbs",
         "grammar_point": "konjunktiv_ii_basics",
         "prompt_goal": "Check whether the learner can express a hypothetical idea with Konjunktiv II.",
         "criteria": "The answer should use a form like 'würde' or another clear Konjunktiv II structure.",
         "example_answer": "Ich würde viel reisen und ein Haus kaufen.",
+        "question": 'Write one German sentence about what you would do if you had more free time. Use "würde", "hätte", or "wäre".',
     },
     {
         "id": 9,
         "level": "B1",
-        "topic": "Sentence Structure",
+        "topic": "Sentence structure",
         "grammar_point": "relative_clauses_basics",
         "prompt_goal": "Check whether the learner can combine two clauses using a relative clause.",
         "criteria": "The answer should use a relative pronoun and a grammatically coherent relative clause.",
         "example_answer": "Das ist die Frau, die mir hilft.",
+        "question": 'Combine this idea into one German sentence with a relative clause: "Das ist die Person. Die Person hilft mir."',
     },
 ]
 
@@ -128,7 +137,7 @@ class DiagnosticManager:
     @staticmethod
     def get_topic_for_task(task_id):
         task = DiagnosticManager.get_task(task_id)
-        return task["topic"] if task else "Grammar"
+        return task["topic"] if task else "Sentence structure"
 
     @staticmethod
     def get_grammar_point_for_task(task_id):
@@ -187,17 +196,17 @@ class DiagnosticManager:
     @staticmethod
     def get_next_task_id(current_id, score_value, results):
         level = DiagnosticManager.get_level_for_task(current_id)
+        remaining = DiagnosticManager.get_unasked_tasks(level, results)
 
-        if DiagnosticManager.should_promote(level, results):
+        if remaining and not DiagnosticManager.should_stop_level(level, results):
+            return remaining[0]
+
+        if not remaining and DiagnosticManager.should_promote(level, results):
             next_level = DiagnosticManager.get_next_level(level)
             if next_level is None:
                 return None
             next_level_tasks = DiagnosticManager.get_unasked_tasks(next_level, results)
             return next_level_tasks[0] if next_level_tasks else None
-
-        remaining = DiagnosticManager.get_unasked_tasks(level, results)
-        if remaining and not DiagnosticManager.should_stop_level(level, results):
-            return remaining[0]
 
         return None
 
@@ -231,7 +240,7 @@ class DiagnosticManager:
     def format_question(task, generated_question):
         return (
             f"Level check for {task['level']} "
-            f"({task['topic']} - {task['grammar_point']}):\n"
+            f"({task['topic']}):\n"
             f"{generated_question}"
         )
 

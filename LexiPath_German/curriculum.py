@@ -12,13 +12,33 @@ GRAMMAR_POINT_TOPIC_HINTS = {
     "definite_articles_basics": "Articles",
     "accusative_masculine_den": "Articles",
     "negation_kein": "Negation",
-    "present_tense_basic_verbs": "Verb Conjugation",
-    "perfect_tense_basics": "Verb Conjugation",
-    "accusative_with_movement": "Cases",
-    "comparatives_basics": "Grammar",
-    "subordinate_clause_weil": "Sentence Structure",
-    "relative_clauses_basics": "Sentence Structure",
-    "konjunktiv_ii_basics": "Grammar",
+    "present_tense_basic_verbs": "Present tense",
+    "perfect_tense_basics": "Present tense",
+    "accusative_with_movement": "Basic prepositions",
+    "comparatives_basics": "Sentence structure",
+    "subordinate_clause_weil": "Sentence structure",
+    "relative_clauses_basics": "Sentence structure",
+    "konjunktiv_ii_basics": "Modal verbs",
+}
+
+CURRICULUM_TOPIC_ALIASES = {
+    "alphabet": "Alphabet & pronunciation",
+    "pronunciation": "Alphabet & pronunciation",
+    "personal pronouns": "Personal pronouns",
+    "pronouns": "Personal pronouns",
+    "verb conjugation": "Present tense",
+    "verbs": "Present tense",
+    "present tense": "Present tense",
+    "modal verbs": "Modal verbs",
+    "sentence structure": "Sentence structure",
+    "word order": "Sentence structure",
+    "grammar": "Sentence structure",
+    "articles": "Articles",
+    "negation": "Negation",
+    "plurals": "Plurals",
+    "cases": "Basic prepositions",
+    "prepositions": "Basic prepositions",
+    "basic prepositions": "Basic prepositions",
 }
 
 
@@ -44,6 +64,11 @@ def _lesson_matches_topic(lesson: Dict[str, Any], topic: str) -> bool:
     return topic in topics
 
 
+def _canonical_topic(topic: str) -> str:
+    normalized = (topic or "").strip().lower()
+    return CURRICULUM_TOPIC_ALIASES.get(normalized, topic or "Sentence structure")
+
+
 def _compact_lesson(lesson: Dict[str, Any], reason: str) -> Dict[str, Any]:
     return {
         "mode": "guided",
@@ -67,7 +92,7 @@ def select_syllabus_reference(
         return {"mode": "guided", "lesson_id": "", "reason": "No curriculum map available."}
 
     normalized_level = _normalize_level(level)
-    topic_hint = GRAMMAR_POINT_TOPIC_HINTS.get(grammar_point, topic or "Grammar")
+    topic_hint = GRAMMAR_POINT_TOPIC_HINTS.get(grammar_point, _canonical_topic(topic))
     profile = learner_profile or {}
     seen_lessons = set(profile.get("syllabus_history", []))
 

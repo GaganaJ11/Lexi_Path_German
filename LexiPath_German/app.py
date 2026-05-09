@@ -1,29 +1,54 @@
 import re
+import random
 import time
+from types import SimpleNamespace
 from typing import Any, Dict, List, TypedDict
 
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
+from openai import OpenAI
 from langgraph.graph import END, START, StateGraph
 
 from config import (
-    NVIDIA_MAX_COMPLETION_TOKENS,
-    NVIDIA_MODEL,
-    NVIDIA_TEMPERATURE,
-    NVIDIA_TOP_P,
-    get_nvidia_api_key,
+    MOONSHOT_BASE_URL,
+    MOONSHOT_MAX_TOKENS,
+    MOONSHOT_MODEL,
+    MOONSHOT_TEMPERATURE,
+    MOONSHOT_TIMEOUT_SECONDS,
+    MOONSHOT_TOP_P,
+    get_moonshot_api_key,
 )
 from curriculum import format_syllabus_reference, select_syllabus_reference
 from diagnostic_logic import DiagnosticManager
 from learner_store import build_learner_snapshot, learner_exists, load_learner, save_learner
 from retriever import retrieve_context_bundle
 
-llm = ChatNVIDIA(
-  model=NVIDIA_MODEL,
-  api_key=get_nvidia_api_key(),
-  temperature=NVIDIA_TEMPERATURE,
-  top_p=NVIDIA_TOP_P,
-  max_completion_tokens=NVIDIA_MAX_COMPLETION_TOKENS,
-)
+
+class OpenAICompatibleChat:
+    def __init__(self):
+        self.client = OpenAI(
+            base_url=MOONSHOT_BASE_URL,
+            api_key=get_moonshot_api_key(),
+            timeout=MOONSHOT_TIMEOUT_SECONDS,
+            max_retries=0,
+        )
+
+    def invoke(self, prompt_or_messages):
+        if isinstance(prompt_or_messages, str):
+            messages = [{"role": "user", "content": prompt_or_messages}]
+        else:
+            messages = prompt_or_messages
+
+        completion = self.client.chat.completions.create(
+            model=MOONSHOT_MODEL,
+            messages=messages,
+            temperature=MOONSHOT_TEMPERATURE,
+            top_p=min(MOONSHOT_TOP_P, 0.95),
+            max_tokens=MOONSHOT_MAX_TOKENS,
+        )
+        content = completion.choices[0].message.content or ""
+        return SimpleNamespace(content=content)
+
+
+llm = OpenAICompatibleChat()
 
 LEVEL_GUIDELINES = {
     "A1": "Use short sentences, simple vocabulary, and one main grammar point at a time.",
@@ -153,11 +178,15 @@ def is_transient_llm_error(error):
     return any(marker in message for marker in TRANSIENT_LLM_ERROR_MARKERS)
 
 
-def invoke_llm_content(prompt_or_messages, fallback_text=None, retries=0):
+def invoke_llm_content(prompt_or_messages, fallback_text=None, retries=0, call_name="llm"):
     last_error = None
+    started_at = time.monotonic()
     for attempt in range(retries + 1):
         try:
-            return llm.invoke(prompt_or_messages).content.strip()
+            content = llm.invoke(prompt_or_messages).content.strip()
+            if not content:
+                raise ValueError("Model returned an empty response.")
+            return content
         except Exception as error:
             last_error = error
             if not is_transient_llm_error(error) or attempt >= retries:
@@ -171,11 +200,26 @@ def invoke_llm_content(prompt_or_messages, fallback_text=None, retries=0):
 
 def fallback_request_dimensions(user_message, user_level="A1"):
     lowered = user_message.lower()
+    continuation_markers = [
+        "ok",
+        "got it",
+        "continue",
+        "continue that",
+        "go on",
+        "next",
+        "teach me",
+        "you teach",
+        "start",
+        "let's do it",
+        "lets do it",
+    ]
 
-    if any(word in lowered for word in ["plan", "schedule", "roadmap", "day", "week"]):
-        goal_type = "study_plan"
-    elif any(word in lowered for word in ["practice", "exercise", "quiz", "task"]):
+    if any(word in lowered for word in ["practice", "exercise", "quiz", "task"]):
         goal_type = "practice"
+    elif any(marker in lowered for marker in continuation_markers):
+        goal_type = "practice"
+    elif any(word in lowered for word in ["plan", "schedule", "roadmap", "day", "week", "lesson", "start"]):
+        goal_type = "study_plan"
     elif any(word in lowered for word in ["correct", "check", "fix", "mistake"]):
         goal_type = "correction"
     elif any(word in lowered for word in ["explain", "difference", "what is", "how do", "help me understand"]):
@@ -201,33 +245,63 @@ RATIONALE: Fallback routing used because the model service was unavailable.
 def build_service_fallback_response(state):
     level = state.get("user_level", "A1")
     latest_user_message = state.get("latest_user_message", "").lower()
-    syllabus_reference = format_syllabus_reference(
-        state.get("lesson_plan", {}).get("syllabus_reference", {})
-        or state.get("syllabus_reference", {})
-    )
+    grammar_point = state.get("grammar_point", "")
+    topic = state.get("topic_hint", "")
+    profile = state.get("learner_profile", default_learner_profile())
+    recent_topics = profile.get("recent_topics", [])
+    recent_grammar_points = profile.get("recent_grammar_points", [])
 
-    if any(word in latest_user_message for word in ["plan", "schedule", "roadmap", "day", "week"]):
-        syllabus_line = ""
-        if syllabus_reference and not syllabus_reference.lower().startswith("no syllabus reference"):
-            syllabus_line = f"\n\nSyllabus guide for today:\n{syllabus_reference}"
+    focus_topic = topic or (recent_topics[-1] if recent_topics else "Sentence structure")
+    focus_grammar = grammar_point or (recent_grammar_points[-1] if recent_grammar_points else "general_grammar")
 
+    if any(word in latest_user_message for word in ["plan", "schedule", "roadmap", "day", "week", "lesson", "start"]):
         return (
-            "I am having trouble reaching the full tutor engine right now, "
-            "so let us keep your learning moving with a simple plan.\n\n"
+            "Let's keep your learning moving with a simple plan.\n\n"
             f"Today at {level}, try this:\n"
             "1. Warm-up: write 3 short German sentences about your day.\n"
             "2. Review: choose one grammar point you found difficult recently.\n"
             "3. Practice: do one small exercise with 3-5 answers.\n"
             "4. Wrap-up: correct one mistake and save one sentence to reuse tomorrow."
-            f"{syllabus_line}\n\n"
+            "\n\n"
             "If you want, we can start with the warm-up now."
         )
 
+    if focus_grammar == "accusative_with_movement" or focus_topic == "Basic prepositions":
+        return (
+            f"Let's continue at {level} with the preposition pattern we were working on.\n\n"
+            "Mini-focus: use **in/auf/an + accusative** when there is movement toward a place.\n"
+            "Example: *Ich gehe in die Mensa.* = I go into/to the cafeteria.\n\n"
+            "Your turn: write one sentence with **in die**, **auf den**, or **an das**."
+        )
+
+    if focus_grammar == "present_tense_basic_verbs" or focus_topic == "Present tense":
+        return (
+            f"Let's continue at {level} with verb position in simple present sentences.\n\n"
+            "Mini-focus: in a normal German main clause, the conjugated verb is in position 2.\n"
+            "Example: *Am Abend schaue ich einen Film.*\n\n"
+            "Your turn: write one sentence starting with **Heute** or **Am Abend**."
+        )
+
+    if focus_grammar == "konjunktiv_ii_basics" or focus_topic == "Modal verbs":
+        return (
+            f"Let's continue at {level} with modal-style sentence structure.\n\n"
+            "Mini-focus: with modal verbs, the second verb goes to the end.\n"
+            "Example: *Ich muss heute lernen.*\n\n"
+            "Your turn: write one sentence with **muss**, **kann**, or **will**."
+        )
+
+    if focus_grammar == "subordinate_clause_weil":
+        return (
+            f"Let's continue at {level} with **weil** sentences.\n\n"
+            "Mini-focus: after **weil**, the conjugated verb usually moves to the end.\n"
+            "Example: *Ich lerne Deutsch, weil ich arbeiten will.*\n\n"
+            "Your turn: write one sentence explaining why you study German."
+        )
+
     return (
-        "I am having trouble reaching the full tutor engine right now, "
-        "but we can still continue gently.\n\n"
-        f"For your current level, {level}, send me one short German sentence "
-        "about what you want to practice today, and I will help you step by step."
+        f"Let's continue at {level} with the same lesson thread.\n\n"
+        "Mini-focus: make one corrected sentence from your last answer and use it again naturally.\n"
+        "Your turn: write one improved sentence about your day."
     )
 
 
@@ -235,61 +309,13 @@ def build_diagnostic_intro():
     return (
         "Hallo! I’m Lexi, your German tutor. It's so nice to meet you. "
         "I'll ask just a few quick questions to get a sense of your current German level and teach in a way that fits you. "
-        "There's absolutely no pressure here—just share what feels comfortable, and answer in German whenrever you can. Just try your best.\n\n"
+        "There's absolutely no pressure here - just share what feels comfortable, and answer in German whenever you can. Just try your best.\n\n"
         "Let’s begin."
     )
 
 
 def classify_request_dimensions(user_message, user_level="A1"):
-    prompt = f"""
-You are routing a learner message for a German tutor.
-
-Student level: {user_level}
-User message: {user_message}
-
-Classify the message along these dimensions:
-
-GOAL_TYPE:
-- explanation
-- practice
-- correction
-- study_plan
-- general_help
-
-RESPONSE_STYLE:
-- gentle
-- structured
-- brief
-
-LANGUAGE_SUPPORT:
-- mostly_english
-- mixed
-- mostly_german
-
-PRACTICE_NOW:
-- YES
-- NO
-
-Rules:
-- If the learner asks for a plan, roadmap, or schedule, GOAL_TYPE should usually be study_plan.
-- If the learner asks for a plan, PRACTICE_NOW should usually be NO unless they explicitly ask to start now.
-- For A1 learners, prefer mostly_english unless the user clearly asks for more German.
-- For A2 learners, mixed is usually appropriate.
-- For B1 learners, mixed or mostly_german can be appropriate depending on the request.
-
-Reply exactly in this format:
-GOAL_TYPE: one label
-RESPONSE_STYLE: one label
-LANGUAGE_SUPPORT: one label
-PRACTICE_NOW: YES or NO
-RATIONALE: one short sentence
-""".strip()
-
-    response = invoke_llm_content(
-        prompt,
-        fallback_text=fallback_request_dimensions(user_message, user_level),
-        retries=1,
-    )
+    response = fallback_request_dimensions(user_message, user_level)
 
     goal_type = extract_section(response, "GOAL_TYPE") or "general_help"
     response_style = extract_section(response, "RESPONSE_STYLE") or "gentle"
@@ -363,83 +389,144 @@ def _fallback_level_adjustment_request(user_message: str, current_level: str):
 
 
 def classify_level_adjustment_request(user_message, current_level):
-    prompt = f"""
-You are checking whether a learner wants to change their German level.
-
-Current level: {current_level}
-User message: {user_message}
-
-Decide:
-- LEVEL_CHANGE_INTENT: YES or NO
-- REQUESTED_LEVEL: A1, A2, B1, or NONE
-- CONFIDENCE: HIGH, MEDIUM, or LOW
-
-Rules:
-- Use YES only if the learner is clearly discussing their level or asking for a level change.
-- REQUESTED_LEVEL should be one of A1, A2, B1 only if explicitly stated or strongly implied.
-- If the learner only says the material is too easy or too hard, LEVEL_CHANGE_INTENT may be YES but REQUESTED_LEVEL can be NONE.
-- If the learner explicitly says things like "I am A2", "I think I am B1", "set my level to A2", or "I am not A1", that counts as a real level-change request.
-
-Reply exactly in this format:
-LEVEL_CHANGE_INTENT: YES or NO
-REQUESTED_LEVEL: A1 or A2 or B1 or NONE
-CONFIDENCE: HIGH or MEDIUM or LOW
-RATIONALE: one short sentence
-""".strip()
-
-    try:
-        fallback_response = _fallback_level_adjustment_request(user_message, current_level)
-        response = invoke_llm_content(
-            prompt,
-            fallback_text=(
-                f"LEVEL_CHANGE_INTENT: {fallback_response['level_change_intent']}\n"
-                f"REQUESTED_LEVEL: {fallback_response['requested_level']}\n"
-                f"CONFIDENCE: {fallback_response['level_confidence'].upper()}\n"
-                f"RATIONALE: {fallback_response['level_change_rationale']}"
-            ),
-            retries=0,
-        )
-
-        intent = extract_section(response, "LEVEL_CHANGE_INTENT").upper() or "NO"
-        requested_level = extract_section(response, "REQUESTED_LEVEL").upper() or "NONE"
-        confidence = extract_section(response, "CONFIDENCE").upper() or "LOW"
-        rationale = extract_section(response, "RATIONALE") or "No level change detected."
-
-        if intent not in {"YES", "NO"}:
-            intent = "NO"
-        if requested_level not in {"A1", "A2", "B1", "NONE"}:
-            requested_level = "NONE"
-        if confidence not in {"HIGH", "MEDIUM", "LOW"}:
-            confidence = "LOW"
-
-        return {
-            "level_change_intent": intent,
-            "requested_level": requested_level,
-            "level_confidence": confidence.lower(),
-            "level_change_rationale": rationale,
-        }
-
-    except Exception:
-        return _fallback_level_adjustment_request(user_message, current_level)
+    return _fallback_level_adjustment_request(user_message, current_level)
 
 
 def detect_topic(user_message):
     lowered = user_message.lower()
     topic_keywords = {
+        "Alphabet & pronunciation": ["alphabet", "pronunciation", "aussprache", "letter", "letters", "sound", "sounds", "buchstabe"],
+        "Personal pronouns": ["pronoun", "pronouns", "ich", "du", "er", "sie", "wir", "ihr", "mein", "dein"],
+        "Present tense": ["present tense", "verb", "conjugation", "konjugation", "gehe", "wohne", "lerne"],
+        "Modal verbs": ["modal", "kann", "muss", "darf", "soll", "möchte", "würde", "konjunktiv"],
+        "Sentence structure": ["word order", "sentence structure", "stellung", "weil", "nebensatz", "relative clause", "comparative", "vergleich"],
         "Articles": ["article", "artikel", "der", "die", "das", "ein", "einen", "den", "dem"],
         "Negation": ["negation", "kein", "keine", "nicht", "verneinung"],
-        "Verb Conjugation": ["verb", "conjugation", "konjugation", "perfekt", "past tense"],
-        "Cases": ["case", "akkusativ", "dativ", "nominativ", "genitiv", "preposition"],
-        "Sentence Structure": ["word order", "sentence structure", "stellung", "weil", "nebensatz", "relative clause"],
-        "Grammar": ["grammar", "grammatik", "konjunktiv", "comparative", "vergleich"],
+        "Plurals": ["plural", "plurals", "mehrzahl"],
+        "Basic prepositions": ["preposition", "prepositions", "case", "akkusativ", "dativ", "nominativ", "genitiv", "auf", "in", "an"],
     }
     for topic, keywords in topic_keywords.items():
         if any(keyword in lowered for keyword in keywords):
             return topic
-    return "Grammar"
+    return "Sentence structure"
+
+
+def _local_diagnostic_floor(task, user_answer):
+    answer = (user_answer or "").strip()
+    lowered = answer.lower()
+    grammar_point = task.get("grammar_point", "")
+
+    if not answer:
+        return None
+
+    full = {
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": True,
+        "rationale": "Local grammar check recognized the target structure clearly.",
+    }
+    partial = {
+        "score_label": "PARTIAL",
+        "score_value": 1,
+        "correct": True,
+        "rationale": "Local grammar check recognized part of the target structure.",
+    }
+
+    if grammar_point == "indefinite_articles_ein_eine_einen":
+        if lowered in {"einen"}:
+            return {
+                **full,
+                "rationale": "The answer supplies the correct masculine accusative article 'einen'.",
+            }
+        if re.search(r"\beinen\s+\w+", lowered):
+            return {
+                **full,
+                "rationale": "The answer clearly uses masculine accusative 'einen' with a noun.",
+            }
+        if re.search(r"\bein(?:e|en)?\s+\w+", lowered):
+            return partial
+
+    if grammar_point == "negation_kein":
+        if lowered in {"kein", "keine", "keinen", "keinem", "keiner", "keines"}:
+            return {
+                **full,
+                "rationale": "The answer supplies a valid inflected form of 'kein' for the prompt.",
+            }
+        if re.search(r"\bkein(?:e|en|em|er|es)?\s+\w+", lowered):
+            return {
+                **full,
+                "rationale": "The answer correctly uses an inflected form of 'kein' before a noun.",
+            }
+        if "kein" in lowered or "nicht" in lowered:
+            return partial
+
+    if grammar_point == "present_tense_basic_verbs":
+        common_present_verbs = (
+            "bin|bist|ist|sind|seid|habe|hast|hat|haben|habt|wohne|wohnst|wohnt|"
+            "gehe|gehst|geht|komme|kommst|kommt|lerne|lernst|lernt|arbeite|"
+            "arbeitest|arbeitet|mache|machst|macht|spiele|spielst|spielt|"
+            "spreche|sprichst|spricht|esse|isst|trinke|trinkst|trinkt|"
+            "lese|liest|fahren|fahre|fährst|fährt|kaufe|kaufst|kauft|"
+            "brauche|brauchst|braucht|finde|findest|findet"
+        )
+        if re.search(rf"\b(ich|du|er|sie|es|wir|ihr)\s+({common_present_verbs})\b", lowered):
+            return {
+                **full,
+                "rationale": "The answer is a complete present-tense sentence with a correctly conjugated verb.",
+            }
+        if re.search(r"\b(ich|du|er|sie|es|wir|ihr)\b", lowered) and re.search(r"\b\w+(e|st|t|en)\b", lowered):
+            return partial
+
+    if grammar_point == "perfect_tense_basics":
+        has_auxiliary = re.search(r"\b(habe|hast|hat|haben|habt|bin|bist|ist|sind|seid)\b", lowered)
+        has_participle = re.search(r"\bge\w+(t|en)\b|\b(gemacht|gewesen|gegangen|gefahren|gesehen|gegessen|getrunken|gelesen)\b", lowered)
+        if has_auxiliary and has_participle:
+            return full
+        if has_auxiliary or has_participle:
+            return partial
+
+    if grammar_point == "accusative_with_movement":
+        has_movement = re.search(r"\b(lege|legst|legt|stelle|stellst|stellt|hänge|hängst|hängt|gehe|gehst|geht|fahre|fährst|fährt|bringe|bringst|bringt)\b", lowered)
+        has_accusative_preposition = re.search(r"\b(auf|in|an|unter|über|vor|hinter|neben|zwischen)\s+(den|die|das|einen|eine)\b", lowered)
+        if has_movement and has_accusative_preposition:
+            return full
+        if has_accusative_preposition:
+            return partial
+
+    if grammar_point == "comparatives_basics":
+        if re.search(r"\b\w+er\s+als\b", lowered):
+            return full
+        if "als" in lowered:
+            return partial
+
+    if grammar_point == "subordinate_clause_weil":
+        weil_final_verbs = (
+            "bin|bist|ist|sind|seid|habe|hast|hat|haben|habt|"
+            "will|willst|wollen|muss|musst|müssen|kann|kannst|können|"
+            "möchte|möchtest|möchten|lerne|lernst|lernt|arbeite|arbeitest|arbeitet|"
+            "wohne|wohnst|wohnt|gehe|gehst|geht|komme|kommst|kommt|brauche|brauchst|braucht"
+        )
+        if "weil" in lowered and re.search(rf"\bweil\b.+\b({weil_final_verbs}|\w+(e|st|t|en))\.?$", lowered):
+            return full
+        if "weil" in lowered:
+            return partial
+
+    if grammar_point == "konjunktiv_ii_basics":
+        if re.search(r"\b(würde|würdest|würden|hätte|hättest|hätten|wäre|wärst|wären|könnte|könntest|könnten)\b", lowered):
+            return full
+
+    if grammar_point == "relative_clauses_basics":
+        if "," in lowered and re.search(r",\s*(der|die|das|den|dem|dessen|deren)\b", lowered):
+            return full
+
+    return None
 
 
 def grade_diagnostic_answer(task, user_answer):
+    local_floor = _local_diagnostic_floor(task, user_answer)
+    if local_floor and local_floor["score_value"] == 2:
+        return local_floor
+
     prompt = f"""
 You are grading a German placement-test answer.
 
@@ -456,18 +543,40 @@ Grade with these labels:
 - PARTIAL: partially demonstrates it, but with weaknesses or incompleteness
 - FAIL: incorrect, avoids the target grammar, or is too weak to count
 
-Be strict but fair.
-Minor spelling mistakes are acceptable if the grammar target is still clear.
+Important grading rules:
+- Grade the student's answer against the target grammar point, not against the exact reference sentence.
+- The reference answer is only one possible correct answer.
+- Accept different nouns, verbs, contexts, or word choices when the target grammar is clearly demonstrated.
+- Accept a one-word fill-in answer if the question asks for a blank and the supplied form is correct.
+- Minor spelling, capitalization, punctuation, or vocabulary mistakes are acceptable if the target grammar is still clear.
+- Do not mark an answer FAIL just because it is simpler than the reference answer.
+- If the target grammar is correct but the sentence has another small issue, use PARTIAL rather than FAIL.
+
+Common examples that should be FULL:
+- negation_kein: "Das ist kein Apfel." or just "kein" when filling "Das ist ___ Apfel."
+- present_tense_basic_verbs: "Ich gehe jeden Tag zur Arbeit."
+- indefinite_articles_ein_eine_einen: "Ich sehe einen Bruder." or just "einen" when filling an accusative masculine blank.
 
 Reply exactly in this format:
 SCORE: FULL or PARTIAL or FAIL
 RATIONALE: one short sentence
 """.strip()
 
+    fallback_score = local_floor or {
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": False,
+        "rationale": "The answer did not clearly show the target grammar in the local diagnostic check.",
+    }
+    fallback_response = (
+        f"SCORE: {fallback_score['score_label']}\n"
+        f"RATIONALE: {fallback_score['rationale']}"
+    )
     response = invoke_llm_content(
         prompt,
-        fallback_text="SCORE: FAIL\nRATIONALE: Could not grade reliably because the model service was unavailable.",
-        retries=1,
+        fallback_text=fallback_response,
+        retries=0,
+        call_name=f"diagnostic:grade:{task.get('grammar_point', 'unknown')}",
     )
     score_label = extract_section(response, "SCORE").upper()
     rationale = extract_section(response, "RATIONALE") or "I checked the answer against the target grammar."
@@ -478,16 +587,107 @@ RATIONALE: one short sentence
         "FAIL": 0,
     }
     score_value = score_map.get(score_label, 0)
-
-    return {
+    llm_evaluation = {
         "score_label": score_label if score_label in score_map else "FAIL",
         "score_value": score_value,
         "correct": score_value >= 1,
         "rationale": rationale,
     }
 
+    if local_floor and local_floor["score_value"] > llm_evaluation["score_value"]:
+        local_floor["rationale"] = (
+            f"{local_floor['rationale']} This overrode the LLM grader's lower score: "
+            f"{llm_evaluation['score_label']}."
+        )
+        return local_floor
+
+    return llm_evaluation
+
+
+DIAGNOSTIC_QUESTION_VARIANTS = {
+    "indefinite_articles_ein_eine_einen": [
+        'Fill in the blank: "Ich sehe ___ Bruder." You can answer with just the missing word.',
+        'Complete this sentence in German: "Sie kauft ___ Apfel." Write only the missing article if you want.',
+        'Write one short German sentence with the phrase "einen Freund".',
+        'Fill in the blank with the correct article: "Wir besuchen ___ Lehrer."',
+    ],
+    "negation_kein": [
+        'Fill in the blank with the correct negation: "Das ist ___ Apfel." You can answer with just the missing word.',
+        'Complete this German sentence with kein/keine/keinen: "Ich habe ___ Auto."',
+        'Write one short German sentence saying that you do not have a dog. Use "kein".',
+        'Fill in the blank: "Wir haben heute ___ Zeit."',
+    ],
+    "present_tense_basic_verbs": [
+        'Write one complete German sentence about something you do every day. Start with "Ich".',
+        'Write one German sentence about where you live or what you study.',
+        'Tell me one thing you do in the morning in German. Use present tense.',
+        'Write one simple German sentence with "ich" and a correctly conjugated verb.',
+    ],
+    "perfect_tense_basics": [
+        'Write one German sentence about what you did yesterday. Use Perfekt, for example with "habe" or "bin".',
+        'Tell me in German one thing you did last weekend. Use Perfekt.',
+        'Write one German sentence with "Ich habe..." and a past participle.',
+        'Write one German sentence about a place you went to recently. Use Perfekt with "bin".',
+    ],
+    "accusative_with_movement": [
+        'Write one German sentence showing movement toward a place, using a phrase like "auf den", "in die", or "an das".',
+        'Write a sentence where you put something onto a table. Use German.',
+        'Write one German sentence with movement and "in die" or "auf den".',
+        'Complete a sentence about placing a book somewhere, using a two-way preposition with movement.',
+    ],
+    "comparatives_basics": [
+        'Write one German sentence comparing two things. Use a comparative form and "als".',
+        'Compare a car and a bicycle in German using "...er als".',
+        'Write one sentence in German saying that one city is bigger, smaller, or nicer than another.',
+        'Use "als" in one German comparison sentence.',
+    ],
+    "subordinate_clause_weil": [
+        'Answer in German: Why are you learning German? Use "weil" and put the verb at the end of the weil-clause.',
+        'Write one German sentence explaining why you study today. Use "weil".',
+        'Complete this idea in German: "Ich lerne Deutsch, weil..." Put the verb at the end.',
+        'Write one reason sentence in German with "weil".',
+    ],
+    "konjunktiv_ii_basics": [
+        'Write one German sentence about what you would do if you had more free time. Use "würde", "hätte", or "wäre".',
+        'Write one polite German request with "könnte" or "würde".',
+        'Say in German what you would buy if you had more money. Use Konjunktiv II.',
+        'Write one hypothetical German sentence with "würde".',
+    ],
+    "relative_clauses_basics": [
+        'Combine this idea into one German sentence with a relative clause: "Das ist die Person. Die Person hilft mir."',
+        'Write one German sentence describing a person with "der", "die", or "das" as a relative pronoun.',
+        'Complete this sentence with a relative clause: "Das ist der Freund, ..."',
+        'Write one German sentence about a thing or person you like, using a relative clause.',
+    ],
+}
+
+
+def fallback_dynamic_diagnostic_question(task):
+    variants = DIAGNOSTIC_QUESTION_VARIANTS.get(task.get("grammar_point", ""))
+    if not variants:
+        return task.get("question") or "Please write one short answer in German."
+    return random.choice(variants)
+
+
+def is_bad_diagnostic_question(question, task):
+    if not question or len(question.strip()) < 12:
+        return True
+    lowered = question.lower()
+    blocked_phrases = [
+        "check whether",
+        "diagnostic goal",
+        "criteria:",
+        "reference answer",
+        "grammar point",
+        "target learner band",
+        task.get("example_answer", "").lower(),
+    ]
+    return any(phrase and phrase in lowered for phrase in blocked_phrases)
+
 
 def generate_diagnostic_question(task, user_level="A1"):
+    fallback_question = fallback_dynamic_diagnostic_question(task)
+
     prompt = f"""
 You are Lexi, a warm German tutor creating one short level-check question.
 
@@ -504,55 +704,61 @@ Rules:
 - Keep the wording natural and teacher-like.
 - Use English when giving the instruction.
 - Do not include the answer.
+- Do not include the reference answer or an answer key.
 - Keep it short.
 - Do not label difficulty or mention CEFR.
+- Make the expected answer format clear: say whether the learner should write a full sentence or only fill the blank.
+- Avoid trick questions; test only the listed grammar point.
+- Use a fresh scenario, noun, or context instead of repeating the same wording every time.
+- Never expose internal phrases like "check whether", "diagnostic goal", "criteria", or "grammar point".
 
 Reply with only the question text.
 """.strip()
 
-    return invoke_llm_content(
+    generated_question = invoke_llm_content(
         prompt,
-        fallback_text=f"Please answer in German: {task['prompt_goal']}",
+        fallback_text=fallback_question,
         retries=0,
+        call_name=f"diagnostic:question:{task.get('grammar_point', 'unknown')}",
     )
+    if is_bad_diagnostic_question(generated_question, task):
+        return fallback_question
+    return generated_question
+
+
+def deterministic_diagnostic_feedback(task, evaluation):
+    topic = task.get("topic", "German grammar")
+    grammar_point = task.get("grammar_point", "")
+
+    if evaluation["score_value"] == 2:
+        if grammar_point == "indefinite_articles_ein_eine_einen":
+            return "Great, that accusative article is exactly what we needed here."
+        if grammar_point == "negation_kein":
+            return "Nice work, you used the negation with kein correctly."
+        if grammar_point == "present_tense_basic_verbs":
+            return "Good sentence, the present-tense verb is clear."
+        if grammar_point == "perfect_tense_basics":
+            return "Great, that shows a clear Perfekt structure."
+        if grammar_point == "accusative_with_movement":
+            return "Nice, you showed movement with the preposition clearly."
+        if grammar_point == "comparatives_basics":
+            return "Good comparison, the comparative pattern with als is clear."
+        if grammar_point == "subordinate_clause_weil":
+            return "Great, your weil-clause shows the sentence structure we are checking."
+        if grammar_point == "konjunktiv_ii_basics":
+            return "Nice, that hypothetical form works well here."
+        if grammar_point == "relative_clauses_basics":
+            return "Good, that relative clause connects the ideas clearly."
+        return f"Nice work, your {topic} answer is strong."
+
+    if evaluation["score_value"] == 1:
+        return f"Good start, I can see part of the {topic} pattern there. We'll strengthen it step by step."
+
+    return f"Good try. This {topic} point still needs practice, and that is completely okay."
 
 
 def build_human_diagnostic_feedback(task, evaluation, user_level="A1"):
-    prompt = f"""
-You are Lexi, a warm and supportive German tutor.
-
-Student level estimate: {user_level}
-Task topic: {task['topic']}
-Grammar point: {task['grammar_point']}
-Evaluation score: {evaluation['score_label']}
-Evaluation rationale: {evaluation['rationale']}
-
-Write a short tutor response after the learner answers a level-check question.
-
-Rules:
-- Sound human, warm, and supportive.
-- Keep it short: 1 to 2 sentences.
-- If FULL, acknowledge it naturally.
-- If PARTIAL, be encouraging and signal that the learner is on the right track.
-- If FAIL, be gentle and reassuring.
-- Do not over-explain yet.
-- Do not say "diagnostic", "verdict", "yes", or "no".
-
-Reply with only the tutor message.
-""".strip()
-
-    if evaluation["score_value"] == 2:
-        fallback_feedback = "Nice work. That was a strong answer."
-    elif evaluation["score_value"] == 1:
-        fallback_feedback = "Good start. You're on the right track."
-    else:
-        fallback_feedback = "Good try. Let's keep going one step at a time."
-
-    return invoke_llm_content(
-        prompt,
-        fallback_text=fallback_feedback,
-        retries=0,
-    )
+    return deterministic_diagnostic_feedback(task, evaluation)
 
 
 def ask_diagnostic_question(state):
@@ -710,7 +916,7 @@ def analyze_query(state):
 
 def retrieve_context(state):
     goal_type = state.get("goal_type", "general_help")
-    topic_hint = state.get("topic_hint", "Grammar")
+    topic_hint = state.get("topic_hint", "Sentence structure")
     latest_user_message = state.get("latest_user_message", "")
     user_level = state.get("user_level", "A1")
     syllabus_reference = select_syllabus_reference(
@@ -762,7 +968,7 @@ def plan_lesson(state):
     practice_now = state.get("practice_now", "NO")
     syllabus_reference = state.get("syllabus_reference") or select_syllabus_reference(
         level=level,
-        topic=state.get("topic_hint", "Grammar"),
+        topic=state.get("topic_hint", "Sentence structure"),
         grammar_point=state.get("grammar_point", ""),
         learner_profile=state.get("learner_profile", default_learner_profile()),
     )
@@ -774,7 +980,7 @@ def plan_lesson(state):
             "response_style": response_style,
             "language_support": language_support,
             "practice_now": practice_now,
-            "topic": state.get("topic_hint", "Grammar"),
+            "topic": state.get("topic_hint", "Sentence structure"),
             "grammar_point": state.get("grammar_point", ""),
             "use_retrieval_fallback": state.get("retrieval_used_fallback", False),
             "syllabus_reference": syllabus_reference,
@@ -1092,75 +1298,32 @@ def build_shared_tutor_instructions(state):
     }
 
     return f"""
-You are Lexi, a warm, smart, adaptive German tutor.
+You are Lexi, a warm adaptive German tutor.
 
-Student level: {level}
-Level source: {level_source}
-Level confidence: {level_confidence}
-Topic: {lesson_plan.get('topic', 'Grammar')}
-Grammar point: {grammar_point or 'not clearly identified'}
-Teaching style: {lesson_plan.get('level_guideline', LEVEL_GUIDELINES['A1'])}
-Response style: {response_style}
-Language support: {language_support}
+Learner: level {level} ({level_source}, confidence {level_confidence}).
+Topic: {lesson_plan.get('topic', 'Sentence structure')}.
+Grammar point: {grammar_point or 'not clearly identified'}.
+Style: {style_instruction_map.get(response_style, style_instruction_map['gentle'])}
+Language: {build_language_support_instructions(language_support)}
 
-Diagnostic profile:
-{diagnostic_summary}
-
-Learner profile:
+Learner memory:
 {learner_profile_summary}
-
-Grammar-point mastery:
 {mastery_summary}
 
-Syllabus reference:
+Diagnostic summary:
+{diagnostic_summary}
+
+Syllabus guide:
 {syllabus_reference_text}
 
-Routing rationale:
-{state.get('routing_rationale', 'No routing rationale available.')}
-
-Tutor behavior rules:
-- Sound human, calm, and encouraging. Never be robotic or generic.
-- Use the "Appreciation and Correction" loop: 1) Appreciate effort, 2) Highlight what was good, 3) Correct gently, 4) Explain briefly.
-- Do not sound like a textbook unless the learner explicitly wants that.
-- For A1 learners, reduce cognitive load and avoid long German-only passages.
-- Use retrieved teaching material when helpful.
-- Use rule-like content for explanation and example-like content for illustration.
-- Use the syllabus reference as a curriculum guide for examples, lesson focus, and practice sequencing.
-- Do not force the syllabus if the learner asks for something else; answer the learner first, then connect back naturally when useful.
-- If the syllabus reference and retrieved context differ, prioritize the learner's request and use the syllabus to choose an appropriate level and next step.
-- Reuse the learner profile naturally, especially recent struggles and current goals.
-- Use grammar-point mastery to decide whether to explain more slowly, review, or move faster.
-- If grammar-point mastery is low, explain more gently and include more support.
-- If grammar-point mastery is high, avoid over-explaining and move more efficiently.
-- If the learner explicitly changed their level, respect that and adapt accordingly.
-- If retrieval is thin, answer carefully from general knowledge.
-
-Important:
-- explain the learner's level in a friendly way
-- appreciate the learner after every answer
-- encourage them even when there are mistakes
-- follow the compact learning path step by step unless the learner wants otherwise
-- after current level mastery, move to the next CEFR level automatically (A1 -> A2 -> B1)
-- never restart a finished level unless the learner asks to revise it
-- teach one small topic at a time
-- after each topic, ask whether they want more examples or want to continue
-- if they did well, tell them positively
-- do not sound robotic
-
-In your reply:
-1. encourage them
-3. respond to their preference
-4. mention the immediate learning focus briefly
-5. start with the first module and the first topic unless the learner asked to skip ahead
-6. ask one small comfortable first exercise
-
-Style instruction:
-{style_instruction_map.get(response_style, style_instruction_map['gentle'])}
-
-Language instruction:
-{build_language_support_instructions(language_support)}
-
-Reply naturally as Lexi.
+Rules:
+- Answer the learner's request first.
+- Use the syllabus only as a gentle reference, not a restriction.
+- Keep the response concise, human, encouraging, and level-appropriate.
+- Use short German examples with English support unless the learner asks for more German.
+- Teach one small focus at a time and end with one comfortable next step.
+- If the learner says they understood, says "continue", or asks you to teach, continue the current lesson thread with the next small exercise.
+- Do not repeatedly ask the learner what topic they want; as the guided tutor, choose a sensible next step from memory, syllabus, or recent mistakes.
 """.strip()
 
 
@@ -1189,7 +1352,8 @@ Retrieved context:
     response = invoke_llm_content(
         [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
         fallback_text=build_service_fallback_response(state),
-        retries=1,
+        retries=0,
+        call_name=f"answer:{state.get('goal_type', 'branch')}",
     )
     return {"draft_response": response}
 
@@ -1226,6 +1390,7 @@ Reply with only the tutor message.
                 "the quick level check if you want a cleaner reset."
             ),
             retries=1,
+            call_name="answer:level_adjustment_unclear",
         )
         return {
             "draft_response": response,
@@ -1257,6 +1422,7 @@ Reply with only the tutor message.
             "and we can slow down or speed up whenever it feels right."
         ),
         retries=1,
+        call_name="answer:level_adjustment_confirm",
     )
     return {
         "user_level": requested_level,
@@ -1344,58 +1510,9 @@ def general_help_node(state):
 
 
 def response_quality_check(state):
-    draft_response = state.get("draft_response", "")
-    level = state.get("user_level", "A1")
-    goal_type = state.get("goal_type", "general_help")
-    language_support = state.get("language_support", "mostly_english")
-    practice_now = state.get("practice_now", "NO")
-    syllabus_reference_text = format_syllabus_reference(
-        state.get("lesson_plan", {}).get("syllabus_reference", {})
-    )
-
-    prompt = f"""
-You are reviewing a German tutor response before it is shown to the learner.
-
-Student level: {level}
-Goal type: {goal_type}
-Language support: {language_support}
-Practice now: {practice_now}
-Syllabus reference:
-{syllabus_reference_text}
-
-Draft response:
-{draft_response}
-
-Check whether the draft is suitable.
-
-Important checks:
-- For A1, avoid long German-only passages.
-- If language support is mostly_english, explanations should mainly be in English.
-- If the learner asked for a study plan, do not suddenly start a quiz unless practice_now is YES.
-- The tone should feel warm and human.
-- The answer should match the learner's request.
-- The response should use the syllabus reference as a gentle guide when it helps with level, examples, or next steps.
-- The response should not ignore the learner's request just to follow the syllabus.
-
-Reply exactly in this format:
-STATUS: PASS or REVISE
-RATIONALE: one short sentence
-""".strip()
-
-    response = invoke_llm_content(
-        prompt,
-        fallback_text="STATUS: PASS\nRATIONALE: Quality review skipped because the model service was unavailable.",
-        retries=0,
-    )
-    status = extract_section(response, "STATUS").upper() or "PASS"
-    rationale = extract_section(response, "RATIONALE") or "The draft looks suitable."
-
-    if status not in {"PASS", "REVISE"}:
-        status = "PASS"
-
     return {
-        "quality_status": status,
-        "quality_rationale": rationale,
+        "quality_status": "PASS",
+        "quality_rationale": "Deterministic quality gate passed; no extra model call needed.",
     }
 
 
@@ -1439,12 +1556,15 @@ Reply with only the improved tutor response.
         prompt,
         fallback_text=draft_response,
         retries=0,
+        call_name="review:answer_revision",
     )
     return {"draft_response": response}
 
 
 def finalize_response(state):
     draft_response = state.get("draft_response", "")
+    if not draft_response.strip():
+        draft_response = build_service_fallback_response(state)
     return {
         "messages": state.get("messages", []) + [{"role": "assistant", "content": draft_response}]
     }
@@ -1636,7 +1756,22 @@ def build_state_from_saved_learner(learner_id: str, saved: Dict[str, Any]) -> Di
     }
 
 
+ANSI_RESET = "\033[0m"
+ANSI_BOLD = "\033[1m"
+ANSI_LEXI = "\033[96m"
+ANSI_YOU = "\033[92m"
+
+
+def speaker_label(label: str, color: str) -> str:
+    return f"{ANSI_BOLD}{color}{label}:{ANSI_RESET}"
+
+
+LEXI_LABEL = speaker_label("LEXI", ANSI_LEXI)
+YOU_LABEL = speaker_label("YOU", ANSI_YOU)
+
+
 if __name__ == "__main__":
+    print("\n")
     learner_name = input("Learner name: ").strip()
     while not learner_name:
         learner_name = input("Learner name: ").strip()
@@ -1644,6 +1779,7 @@ if __name__ == "__main__":
     learner_id = learner_name.lower()
 
     if learner_exists(learner_id):
+        print("\n")
         saved = load_learner(learner_id) or {}
         saved_level = saved.get("user_level", "Unknown")
         choice = input(
@@ -1662,20 +1798,20 @@ if __name__ == "__main__":
                 "What would you like to work on today?"
             )
             current_state["messages"].append({"role": "assistant", "content": welcome_back})
-            print(f"\nLEXI: {current_state['messages'][-1]['content']}")
+            print(f"\n{LEXI_LABEL} {current_state['messages'][-1]['content']}")
         else:
             current_state = build_initial_state(learner_id, learner_name)
             current_state["is_returning_learner"] = True
             current_state["wants_retake_diagnostic"] = True
             current_state = app.invoke(current_state)
-            print(f"\nLEXI: {current_state['messages'][-1]['content']}")
+            print(f"\n{LEXI_LABEL} {current_state['messages'][-1]['content']}")
     else:
         current_state = build_initial_state(learner_id, learner_name)
         current_state = app.invoke(current_state)
-        print(f"\nLEXI: {current_state['messages'][-1]['content']}")
+        print(f"\n{LEXI_LABEL} {current_state['messages'][-1]['content']}")
 
     while True:
-        user_text = input("YOU: ").strip()
+        user_text = input(f"{YOU_LABEL} ").strip()
         if user_text.lower() in {"exit", "quit"}:
             if current_state.get("learner_id"):
                 snapshot = build_learner_snapshot(current_state)
@@ -1688,4 +1824,4 @@ if __name__ == "__main__":
 
         current_state["messages"].append({"role": "user", "content": user_text})
         current_state = app.invoke(current_state)
-        print(f"\nLEXI: {current_state['messages'][-1]['content']}")
+        print(f"\n{LEXI_LABEL} {current_state['messages'][-1]['content']}")

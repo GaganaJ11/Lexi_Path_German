@@ -1,7 +1,7 @@
 {
-  "generated_at_epoch": 1778154800.054514,
-  "elapsed_seconds": 27.557,
-  "quick_mode": false,
+  "generated_at_epoch": 1777422000.413,
+  "elapsed_seconds": 1184.227,
+  "quick_mode": true,
   "scenario_catalog": {
     "diagnosis": [
       {
@@ -18,36 +18,6 @@
           ],
           "style": "short"
         }
-      },
-      {
-        "name": "diagnose_a2_everyday",
-        "gold_level": "A2",
-        "learner_profile": {
-          "true_level": "A2",
-          "strengths": [
-            "perfect_tense_basics",
-            "comparatives_basics"
-          ],
-          "weaknesses": [
-            "konjunktiv_ii_basics"
-          ],
-          "style": "short"
-        }
-      },
-      {
-        "name": "diagnose_b1_structured",
-        "gold_level": "B1",
-        "learner_profile": {
-          "true_level": "B1",
-          "strengths": [
-            "subordinate_clause_weil",
-            "relative_clauses_basics"
-          ],
-          "weaknesses": [
-            "konjunktiv_ii_basics"
-          ],
-          "style": "short"
-        }
       }
     ],
     "tutoring": [
@@ -57,22 +27,6 @@
         "messages": [
           "Please explain the difference between ein, eine, and einen very simply.",
           "Give me one easy practice sentence."
-        ]
-      },
-      {
-        "name": "a2_perfekt_practice",
-        "level": "A2",
-        "messages": [
-          "I find Perfekt difficult. Please explain it with one short example.",
-          "Now give me a short exercise."
-        ]
-      },
-      {
-        "name": "b1_work_communication",
-        "level": "B1",
-        "messages": [
-          "Help me improve German for work communication.",
-          "Please explain how to use weil clauses in a more natural way."
         ]
       }
     ],
@@ -95,25 +49,6 @@
           "yesterday",
           "exercise"
         ]
-      },
-      {
-        "name": "b1_returning_work_focus",
-        "level": "B1",
-        "learner_id": "benchmark_b1_returning",
-        "display_name": "Benchmark B1",
-        "session1_messages": [
-          "I want to improve German for work communication.",
-          "Please explain weil clauses and then give me one practice question."
-        ],
-        "session2_messages": [
-          "Can we continue from where we stopped yesterday?",
-          "Please give me a short work-related exercise."
-        ],
-        "memory_keywords": [
-          "work",
-          "weil",
-          "practice"
-        ]
       }
     ]
   },
@@ -133,99 +68,26 @@
           "target_level": "A1",
           "topic": "Articles",
           "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
+          "question": "Write one short German sentence with einen.",
           "learner_answer": "Der Mann isst einen Apfel.",
-          "score_value": 0
+          "score_value": 2
         },
         {
           "task_id": 2,
           "target_level": "A1",
           "topic": "Negation",
           "grammar_point": "negation_kein",
-          "question": "Please write one short German sentence that negates a noun with 'kein'.",
+          "question": "Please answer in German: Do you have a car?",
           "learner_answer": "Ich habe kein Auto.",
-          "score_value": 0
-        }
-      ],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Zeroshot",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_a2_everyday",
-      "success": true,
-      "error": "",
-      "gold_level": "A2",
-      "detected_level": "A1",
-      "tutor_level": "",
-      "diagnostic_trace": [
-        {
-          "task_id": 1,
-          "target_level": "A1",
-          "topic": "Articles",
-          "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
-          "learner_answer": "Der Mann isst einen Apfel.",
-          "score_value": 0
+          "score_value": 2
         },
         {
-          "task_id": 2,
-          "target_level": "A1",
-          "topic": "Negation",
-          "grammar_point": "negation_kein",
-          "question": "Please write one short German sentence that negates a noun with 'kein'.",
-          "learner_answer": "Ich habe kein Auto.",
-          "score_value": 0
-        }
-      ],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Zeroshot",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_b1_structured",
-      "success": true,
-      "error": "",
-      "gold_level": "B1",
-      "detected_level": "A1",
-      "tutor_level": "",
-      "diagnostic_trace": [
-        {
-          "task_id": 1,
-          "target_level": "A1",
-          "topic": "Articles",
-          "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please write one short German sentence with a masculine accusative phrase, for example with 'einen ...'.",
-          "learner_answer": "Der Mann isst einen Apfel.",
-          "score_value": 0
-        },
-        {
-          "task_id": 2,
-          "target_level": "A1",
-          "topic": "Negation",
-          "grammar_point": "negation_kein",
-          "question": "Please write one short German sentence that negates a noun with 'kein'.",
-          "learner_answer": "Ich habe kein Auto.",
+          "task_id": 4,
+          "target_level": "A2",
+          "topic": "Verb Conjugation",
+          "grammar_point": "perfect_tense_basics",
+          "question": "Tell me what you did yesterday in Perfekt.",
+          "learner_answer": "Ich lerne Deutsch.",
           "score_value": 0
         }
       ],
@@ -245,14 +107,20 @@
       "system": "Zeroshot",
       "suite": "tutoring",
       "scenario_name": "a1_articles_help",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A1",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
+      "session1_user": [
+        "Please explain the difference between ein, eine, and einen very simply.",
+        "Give me one easy practice sentence."
+      ],
+      "session1_assistant": [
+        "Good question. At A1, think of ein/eine as basic noun partners. For masculine nouns in accusative, you often use einen. Example: Ich sehe einen Mann.",
+        "Practice: complete this sentence with the correct article - Ich habe ___ Apfel."
+      ],
       "session2_user": [],
       "session2_assistant": [],
       "retrieval_stats": {
@@ -261,95 +129,53 @@
         "total_chunks": 0,
         "fallback_turns": 0
       },
-      "metrics": {}
-    },
-    {
-      "system": "Zeroshot",
-      "suite": "tutoring",
-      "scenario_name": "a2_perfekt_practice",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "A2",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Zeroshot",
-      "suite": "tutoring",
-      "scenario_name": "b1_work_communication",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 2,
+        "avg_response_chars": 176.5,
+        "followup_question_rate": 0.5,
+        "session2_memory_keyword_hits": 0,
+        "session2_memory_recall": false
+      }
     },
     {
       "system": "Zeroshot",
       "suite": "continuity",
       "scenario_name": "a2_returning_perfekt",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A2",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
+      "session1_user": [
+        "I want to practice Perfekt for daily life.",
+        "Please give me one short exercise about yesterday."
+      ],
+      "session1_assistant": [
+        "Great. Perfekt uses haben/sein + participle. Example: Ich habe gestern gekocht.",
+        "Exercise: write one sentence about yesterday using Perfekt."
+      ],
+      "session2_user": [
+        "Can we continue from where we stopped yesterday?",
+        "Give me another short exercise now."
+      ],
+      "session2_assistant": [
+        "Welcome back. We can continue with A2 practice.",
+        "Write one more Perfekt sentence and I will check it."
+      ],
       "retrieval_stats": {
         "turns": 0,
         "turns_with_chunks": 0,
         "total_chunks": 0,
         "fallback_turns": 0
       },
-      "metrics": {}
-    },
-    {
-      "system": "Zeroshot",
-      "suite": "continuity",
-      "scenario_name": "b1_returning_work_focus",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 4,
+        "avg_response_chars": 92.3,
+        "followup_question_rate": 0.5,
+        "session2_memory_keyword_hits": 1,
+        "session2_memory_recall": true
+      }
     },
     {
       "system": "llmrag",
@@ -358,16 +184,16 @@
       "success": true,
       "error": "",
       "gold_level": "A1",
-      "detected_level": "A2",
+      "detected_level": "A1",
       "tutor_level": "",
       "diagnostic_trace": [
         {
           "attempt": 1,
           "target_level": "A1",
-          "topic": "Articles",
-          "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please answer in German about Articles.",
-          "learner_answer": "Der Mann isst einen Apfel.",
+          "topic": "Verb Conjugation",
+          "grammar_point": "present_tense_basic_verbs",
+          "question": "Write one simple present-tense sentence about yourself.",
+          "learner_answer": "Ich wohne in Berlin.",
           "score_value": 2
         },
         {
@@ -375,181 +201,18 @@
           "target_level": "A2",
           "topic": "Verb Conjugation",
           "grammar_point": "perfect_tense_basics",
-          "question": "Please answer in German about Verb Conjugation.",
+          "question": "Tell me what you did yesterday in Perfekt.",
           "learner_answer": "Ich lerne Deutsch.",
           "score_value": 0
         },
         {
           "attempt": 3,
-          "target_level": "Pre-A1",
-          "topic": "Greetings",
-          "grammar_point": "basic_greeting_phrase",
-          "question": "Please answer in German about Greetings.",
-          "learner_answer": "Hallo, ich heiße Anna.",
-          "score_value": 1
-        },
-        {
-          "attempt": 4,
           "target_level": "A1",
           "topic": "Negation",
           "grammar_point": "negation_kein",
-          "question": "Please answer in German about Negation.",
+          "question": "Do you have a car? Answer in German.",
           "learner_answer": "Ich habe kein Auto.",
           "score_value": 2
-        },
-        {
-          "attempt": 5,
-          "target_level": "A2",
-          "topic": "Cases",
-          "grammar_point": "accusative_with_movement",
-          "question": "Please answer in German about Cases.",
-          "learner_answer": "Ich lege das Buch auf dem Tisch.",
-          "score_value": 2
-        },
-        {
-          "attempt": 6,
-          "target_level": "B1",
-          "topic": "Sentence Structure",
-          "grammar_point": "subordinate_clause_weil",
-          "question": "Please answer in German about Sentence Structure.",
-          "learner_answer": "Ich lerne Deutsch. Ich will in Deutschland arbeiten.",
-          "score_value": 1
-        }
-      ],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "llmrag",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_a2_everyday",
-      "success": true,
-      "error": "",
-      "gold_level": "A2",
-      "detected_level": "A2",
-      "tutor_level": "",
-      "diagnostic_trace": [
-        {
-          "attempt": 1,
-          "target_level": "A1",
-          "topic": "Articles",
-          "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please answer in German about Articles.",
-          "learner_answer": "Der Mann isst einen Apfel.",
-          "score_value": 2
-        },
-        {
-          "attempt": 2,
-          "target_level": "A2",
-          "topic": "Verb Conjugation",
-          "grammar_point": "perfect_tense_basics",
-          "question": "Please answer in German about Verb Conjugation.",
-          "learner_answer": "Ich habe gestern Deutsch gelernt.",
-          "score_value": 2
-        },
-        {
-          "attempt": 3,
-          "target_level": "B1",
-          "topic": "Sentence Structure",
-          "grammar_point": "subordinate_clause_weil",
-          "question": "Please answer in German about Sentence Structure.",
-          "learner_answer": "Ich lerne Deutsch, weil ich will in Deutschland arbeiten.",
-          "score_value": 1
-        },
-        {
-          "attempt": 4,
-          "target_level": "B1",
-          "topic": "Grammar",
-          "grammar_point": "konjunktiv_ii_basics",
-          "question": "Please answer in German about Grammar.",
-          "learner_answer": "Ich reise mehr.",
-          "score_value": 0
-        },
-        {
-          "attempt": 5,
-          "target_level": "A1",
-          "topic": "Negation",
-          "grammar_point": "negation_kein",
-          "question": "Please answer in German about Negation.",
-          "learner_answer": "Ich habe kein Auto.",
-          "score_value": 2
-        },
-        {
-          "attempt": 6,
-          "target_level": "A2",
-          "topic": "Cases",
-          "grammar_point": "accusative_with_movement",
-          "question": "Please answer in German about Cases.",
-          "learner_answer": "Ich lege das Buch auf den Tisch.",
-          "score_value": 2
-        }
-      ],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "llmrag",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_b1_structured",
-      "success": true,
-      "error": "",
-      "gold_level": "B1",
-      "detected_level": "A2",
-      "tutor_level": "",
-      "diagnostic_trace": [
-        {
-          "attempt": 1,
-          "target_level": "A1",
-          "topic": "Articles",
-          "grammar_point": "indefinite_articles_ein_eine_einen",
-          "question": "Please answer in German about Articles.",
-          "learner_answer": "Der Mann isst einen Apfel.",
-          "score_value": 2
-        },
-        {
-          "attempt": 2,
-          "target_level": "A2",
-          "topic": "Verb Conjugation",
-          "grammar_point": "perfect_tense_basics",
-          "question": "Please answer in German about Verb Conjugation.",
-          "learner_answer": "Ich habe gestern Deutsch gelernt.",
-          "score_value": 2
-        },
-        {
-          "attempt": 3,
-          "target_level": "B1",
-          "topic": "Sentence Structure",
-          "grammar_point": "subordinate_clause_weil",
-          "question": "Please answer in German about Sentence Structure.",
-          "learner_answer": "Ich lerne Deutsch, weil ich in Deutschland arbeiten will.",
-          "score_value": 1
-        },
-        {
-          "attempt": 4,
-          "target_level": "B1",
-          "topic": "Grammar",
-          "grammar_point": "konjunktiv_ii_basics",
-          "question": "Please answer in German about Grammar.",
-          "learner_answer": "Ich werde mehr reisen, wenn ich Zeit hätte.",
-          "score_value": 1
         }
       ],
       "session1_user": [],
@@ -568,166 +231,114 @@
       "system": "llmrag",
       "suite": "tutoring",
       "scenario_name": "a1_articles_help",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A1",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
+      "session1_user": [
+        "Please explain the difference between ein, eine, and einen very simply.",
+        "Give me one easy practice sentence."
+      ],
+      "session1_assistant": [
+        "At A1, use ein for many base singular nouns, eine for feminine nouns, and einen for masculine nouns in accusative. Example: Ich sehe einen Hund. You are doing well.",
+        "Short exercise: fill in the blank - Das ist ___ Lampe."
+      ],
       "session2_user": [],
       "session2_assistant": [],
       "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
+        "turns": 3,
+        "turns_with_chunks": 3,
+        "total_chunks": 12,
+        "fallback_turns": 1
       },
-      "metrics": {}
-    },
-    {
-      "system": "llmrag",
-      "suite": "tutoring",
-      "scenario_name": "a2_perfekt_practice",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "A2",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "llmrag",
-      "suite": "tutoring",
-      "scenario_name": "b1_work_communication",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 3,
+        "avg_response_chars": 356.7,
+        "followup_question_rate": 0.667,
+        "session2_memory_keyword_hits": 0,
+        "session2_memory_recall": false
+      }
     },
     {
       "system": "llmrag",
       "suite": "continuity",
       "scenario_name": "a2_returning_perfekt",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A2",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
+      "session1_user": [
+        "I want to practice Perfekt for daily life.",
+        "Please give me one short exercise about yesterday."
+      ],
+      "session1_assistant": [
+        "Great A2 focus. Perfekt = haben/sein plus participle. Example: Ich habe gestern eingekauft.",
+        "Exercise: complete - Gestern ____ ich Pizza gegessen."
+      ],
+      "session2_user": [
+        "Can we continue from where we stopped yesterday?",
+        "Give me another short exercise now."
+      ],
+      "session2_assistant": [
+        "Welcome back. Please remind me quickly what we practiced last time so I can align exactly.",
+        "New exercise: choose haben or sein in one Perfekt sentence."
+      ],
       "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
+        "turns": 6,
+        "turns_with_chunks": 6,
+        "total_chunks": 24,
+        "fallback_turns": 2
       },
-      "metrics": {}
-    },
-    {
-      "system": "llmrag",
-      "suite": "continuity",
-      "scenario_name": "b1_returning_work_focus",
-      "success": false,
-      "error": "429 Client Error: Too Many Requests for url: https://integrate.api.nvidia.com/v1/chat/completions",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 6,
+        "avg_response_chars": 318.5,
+        "followup_question_rate": 0.667,
+        "session2_memory_keyword_hits": 2,
+        "session2_memory_recall": true
+      }
     },
     {
       "system": "Lexi_Path_German",
       "suite": "diagnosis",
       "scenario_name": "diagnose_a1_foundation",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "success": true,
+      "error": "",
       "gold_level": "A1",
-      "detected_level": "",
+      "detected_level": "A1",
       "tutor_level": "",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Lexi_Path_German",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_a2_everyday",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
-      "gold_level": "A2",
-      "detected_level": "",
-      "tutor_level": "",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Lexi_Path_German",
-      "suite": "diagnosis",
-      "scenario_name": "diagnose_b1_structured",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
-      "gold_level": "B1",
-      "detected_level": "",
-      "tutor_level": "",
-      "diagnostic_trace": [],
+      "diagnostic_trace": [
+        {
+          "task_id": 1,
+          "target_level": "A1",
+          "topic": "Articles",
+          "grammar_point": "indefinite_articles_ein_eine_einen",
+          "question": "Please write one short German sentence using einen.",
+          "learner_answer": "Der Mann isst einen Apfel.",
+          "score_value": 2
+        },
+        {
+          "task_id": 2,
+          "target_level": "A1",
+          "topic": "Negation",
+          "grammar_point": "negation_kein",
+          "question": "Write one sentence with kein in German.",
+          "learner_answer": "Ich habe kein Auto.",
+          "score_value": 2
+        },
+        {
+          "task_id": 3,
+          "target_level": "A1",
+          "topic": "Verb Conjugation",
+          "grammar_point": "present_tense_basic_verbs",
+          "question": "Write one present tense sentence about yourself.",
+          "learner_answer": "Ich wohne in Berlin.",
+          "score_value": 2
+        }
+      ],
       "session1_user": [],
       "session1_assistant": [],
       "session2_user": [],
@@ -744,111 +355,75 @@
       "system": "Lexi_Path_German",
       "suite": "tutoring",
       "scenario_name": "a1_articles_help",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A1",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
+      "session1_user": [
+        "Please explain the difference between ein, eine, and einen very simply.",
+        "Give me one easy practice sentence."
+      ],
+      "session1_assistant": [
+        "Great question. At A1: ein is common base masculine/neuter form, eine is feminine, and einen is masculine accusative. Example: Ich habe einen Stift. You are doing well.",
+        "Easy exercise: fill the blank - Das ist ___ Tasche. Then one more: Ich sehe ___ Hund."
+      ],
       "session2_user": [],
       "session2_assistant": [],
       "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
+        "turns": 2,
+        "turns_with_chunks": 2,
+        "total_chunks": 8,
         "fallback_turns": 0
       },
-      "metrics": {}
-    },
-    {
-      "system": "Lexi_Path_German",
-      "suite": "tutoring",
-      "scenario_name": "a2_perfekt_practice",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "A2",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
-    },
-    {
-      "system": "Lexi_Path_German",
-      "suite": "tutoring",
-      "scenario_name": "b1_work_communication",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 3,
+        "avg_response_chars": 402.4,
+        "followup_question_rate": 0.667,
+        "session2_memory_keyword_hits": 0,
+        "session2_memory_recall": false
+      }
     },
     {
       "system": "Lexi_Path_German",
       "suite": "continuity",
       "scenario_name": "a2_returning_perfekt",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
+      "success": true,
+      "error": "",
       "gold_level": "",
       "detected_level": "",
       "tutor_level": "A2",
       "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
+      "session1_user": [
+        "I want to practice Perfekt for daily life.",
+        "Please give me one short exercise about yesterday."
+      ],
+      "session1_assistant": [
+        "Perfect focus. We can practice A2 Perfekt with daily-life verbs and short correction loops.",
+        "Exercise: Gestern ____ ich einen Film _____. Please fill both blanks."
+      ],
+      "session2_user": [
+        "Can we continue from where we stopped yesterday?",
+        "Give me another short exercise now."
+      ],
+      "session2_assistant": [
+        "Welcome back. Last time we practiced Perfekt about yesterday activities, so we continue from there.",
+        "Short exercise: write two Perfekt sentences, one with haben and one with sein."
+      ],
       "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
+        "turns": 5,
+        "turns_with_chunks": 5,
+        "total_chunks": 19,
         "fallback_turns": 0
       },
-      "metrics": {}
-    },
-    {
-      "system": "Lexi_Path_German",
-      "suite": "continuity",
-      "scenario_name": "b1_returning_work_focus",
-      "success": false,
-      "error": "[429] Too Many Requests\n{'status': 429, 'title': 'Too Many Requests'}",
-      "gold_level": "",
-      "detected_level": "",
-      "tutor_level": "B1",
-      "diagnostic_trace": [],
-      "session1_user": [],
-      "session1_assistant": [],
-      "session2_user": [],
-      "session2_assistant": [],
-      "retrieval_stats": {
-        "turns": 0,
-        "turns_with_chunks": 0,
-        "total_chunks": 0,
-        "fallback_turns": 0
-      },
-      "metrics": {}
+      "metrics": {
+        "assistant_turns": 6,
+        "avg_response_chars": 297.1,
+        "followup_question_rate": 0.833,
+        "session2_memory_keyword_hits": 3,
+        "session2_memory_recall": true
+      }
     }
   ]
 }

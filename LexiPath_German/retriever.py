@@ -15,12 +15,15 @@ TRUSTED_SOURCES = (
 )
 
 TOPIC_KEYWORDS = {
+    "Alphabet & pronunciation": ["alphabet", "pronunciation", "aussprache", "letter", "letters", "sound", "buchstabe"],
+    "Personal pronouns": ["pronoun", "pronouns", "ich", "du", "er", "sie", "wir", "ihr", "mein", "dein"],
+    "Present tense": ["verb", "present", "present tense", "conjugation", "konjugation", "gehe", "wohne", "lerne"],
+    "Modal verbs": ["modal", "kann", "muss", "darf", "soll", "möchte", "würde", "konjunktiv"],
+    "Sentence structure": ["word order", "sentence structure", "stellung", "weil", "nebensatz", "relative clause", "comparative", "vergleich"],
     "Articles": ["article", "artikel", "der", "die", "das", "ein", "eine", "einen", "dem", "den"],
     "Negation": ["negation", "negative", "kein", "keine", "nicht", "verneinung"],
-    "Verb Conjugation": ["verb", "conjugation", "konjugation", "perfekt", "partizip", "past tense"],
-    "Sentence Structure": ["word order", "sentence structure", "stellung", "weil", "nebensatz", "relative clause"],
-    "Cases": ["case", "akkusativ", "dativ", "nominativ", "genitiv", "preposition", "praeposition"],
-    "Grammar": ["grammar", "grammatik", "konjunktiv", "comparative", "vergleich"],
+    "Plurals": ["plural", "plurals", "mehrzahl"],
+    "Basic prepositions": ["case", "akkusativ", "dativ", "nominativ", "genitiv", "preposition", "praeposition", "auf", "in", "an"],
 }
 
 GRAMMAR_POINT_KEYWORDS = {
@@ -38,12 +41,27 @@ GRAMMAR_POINT_KEYWORDS = {
 }
 
 TOPIC_DEFAULT_GRAMMAR_POINTS = {
+    "Alphabet & pronunciation": "general_grammar",
+    "Personal pronouns": "general_grammar",
+    "Present tense": "present_tense_basic_verbs",
+    "Modal verbs": "konjunktiv_ii_basics",
+    "Sentence structure": "subordinate_clause_weil",
     "Articles": "definite_articles_basics",
     "Negation": "negation_kein",
-    "Verb Conjugation": "present_tense_basic_verbs",
-    "Sentence Structure": "subordinate_clause_weil",
-    "Cases": "accusative_with_movement",
-    "Grammar": "general_grammar",
+    "Plurals": "general_grammar",
+    "Basic prepositions": "accusative_with_movement",
+}
+
+STORED_TOPIC_ALIASES = {
+    "Alphabet & pronunciation": ["Alphabet & pronunciation", "Grammar"],
+    "Personal pronouns": ["Personal pronouns", "Grammar"],
+    "Present tense": ["Present tense", "Verb Conjugation"],
+    "Modal verbs": ["Modal verbs", "Grammar", "Verb Conjugation"],
+    "Sentence structure": ["Sentence structure", "Sentence Structure", "Grammar"],
+    "Articles": ["Articles"],
+    "Negation": ["Negation"],
+    "Plurals": ["Plurals", "Grammar"],
+    "Basic prepositions": ["Basic prepositions", "Cases"],
 }
 
 LEVEL_FALLBACKS = {
@@ -74,7 +92,16 @@ def infer_topic(query: str) -> str:
     for topic, keywords in TOPIC_KEYWORDS.items():
         if any(keyword in lowered for keyword in keywords):
             return topic
-    return "Grammar"
+    return "Sentence structure"
+
+
+def stored_topic_candidates(topic: str) -> List[str]:
+    candidates = STORED_TOPIC_ALIASES.get(topic, [topic])
+    ordered = []
+    for candidate in candidates:
+        if candidate and candidate not in ordered:
+            ordered.append(candidate)
+    return ordered
 
 
 def infer_grammar_point(query: str, topic: str) -> str:
@@ -333,18 +360,19 @@ def retrieve_example_chunks(
 
     if not documents:
         for level in LEVEL_FALLBACKS.get(user_level, [user_level]):
-            documents.extend(
-                search_documents(
-                    query,
-                    {
-                        "level": level,
-                        "source": "Nicos-Weg-GitHub",
-                        "chunk_type": "example",
-                        "topic": topic,
-                    },
-                    k * 2,
+            for stored_topic in stored_topic_candidates(topic):
+                documents.extend(
+                    search_documents(
+                        query,
+                        {
+                            "level": level,
+                            "source": "Nicos-Weg-GitHub",
+                            "chunk_type": "example",
+                            "topic": stored_topic,
+                        },
+                        k * 2,
+                    )
                 )
-            )
             if documents:
                 break
 
