@@ -60,12 +60,10 @@
         "runs": 1,
         "run_success_rate": 1.0,
         "diagnostic_level_accuracy": 1.0,
-        "diagnostic_macro_f1": 0.3333,
         "diagnostic_overplacement_rate": 0.0,
         "diagnostic_underplacement_rate": 0.0,
         "diagnostic_turns_avg": 3.0,
         "diagnostic_level_span_avg": 0.0,
-        "b1_probe_rate": 0.0
       },
       "tutoring": {
         "runs": 1,
@@ -95,12 +93,10 @@
         "runs": 1,
         "run_success_rate": 1.0,
         "diagnostic_level_accuracy": 1.0,
-        "diagnostic_macro_f1": 0.3333,
         "diagnostic_overplacement_rate": 0.0,
         "diagnostic_underplacement_rate": 0.0,
         "diagnostic_turns_avg": 3.0,
         "diagnostic_level_span_avg": 1.0,
-        "b1_probe_rate": 0.0
       },
       "tutoring": {
         "runs": 1,
@@ -115,7 +111,7 @@
       "continuity": {
         "runs": 1,
         "run_success_rate": 1.0,
-        "session2_memory_recall_rate": 1.0,
+        "session2_memory_recall_rate": 0.1,
         "session2_memory_keyword_hits_avg": 1.0,
         "assistant_turns_avg": 4.0,
         "avg_response_chars": 92.3,
@@ -130,12 +126,10 @@
         "runs": 1,
         "run_success_rate": 1.0,
         "diagnostic_level_accuracy": 1.0,
-        "diagnostic_macro_f1": 0.3333,
         "diagnostic_overplacement_rate": 0.0,
         "diagnostic_underplacement_rate": 0.0,
         "diagnostic_turns_avg": 3.0,
         "diagnostic_level_span_avg": 1.0,
-        "b1_probe_rate": 0.0
       },
       "tutoring": {
         "runs": 1,
@@ -150,7 +144,7 @@
       "continuity": {
         "runs": 1,
         "run_success_rate": 1.0,
-        "session2_memory_recall_rate": 1.0,
+        "session2_memory_recall_rate": 0.5,
         "session2_memory_keyword_hits_avg": 2.0,
         "assistant_turns_avg": 6.0,
         "avg_response_chars": 318.5,

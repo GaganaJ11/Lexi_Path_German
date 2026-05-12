@@ -13,7 +13,7 @@ KIMI_API_URL = os.getenv(
 KIMI_MODEL_NAME = os.getenv("KIMI_MODEL_NAME", "moonshotai/kimi-k2.6")
 KIMI_API_KEY = os.getenv(
     "KIMI_API_KEY",
-    "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",
+    "your_moonshot_api_key_here",
 )
 REQUEST_TIMEOUT = int(os.getenv("KIMI_REQUEST_TIMEOUT", "180"))
 CHAT_TEMPERATURE = float(os.getenv("KIMI_TEMPERATURE", "0.3"))

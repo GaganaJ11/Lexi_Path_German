@@ -9,8 +9,8 @@ Do not share or commit this file after adding a real API key.
 # USER SETTINGS
 # =========================
 
-NVIDIA_API_KEY = "sk-JOcL5kI8nLSisFiefomELDGK3uLBONHssHbntgGjNh5schmA"
-DATABASE_URL = "postgresql+psycopg://postgres:mypassword@localhost:5432/postgres"
+NVIDIA_API_KEY = "your_moonshot_api_key_here"
+DATABASE_URL = "postgresql+psycopg://postgres:yourlocalhostpassword@localhost:5432/postgres"
 
 
 # =========================

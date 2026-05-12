@@ -7971,5 +7971,188 @@
     "display_name": "Archana",
     "learner_id": "archana",
     "last_active": "2026-05-08T20:26:54.439281"
+  },
+  "kavya": {
+    "user_level": "A2",
+    "diagnostic_results": {
+      "1": 2,
+      "2": 2,
+      "3": 2,
+      "4": 2,
+      "5": 2,
+      "6": 0,
+      "7": 2,
+      "8": 0,
+      "9": 0
+    },
+    "diagnostic_feedback": [
+      {
+        "task_id": 1,
+        "level": "A1",
+        "topic": "Articles",
+        "grammar_point": "indefinite_articles_ein_eine_einen",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The answer supplies the correct masculine accusative article 'einen'."
+      },
+      {
+        "task_id": 2,
+        "level": "A1",
+        "topic": "Negation",
+        "grammar_point": "negation_kein",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The answer supplies a valid inflected form of 'kein' for the prompt."
+      },
+      {
+        "task_id": 3,
+        "level": "A1",
+        "topic": "Present tense",
+        "grammar_point": "present_tense_basic_verbs",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The answer is a complete present-tense sentence with a correctly conjugated verb."
+      },
+      {
+        "task_id": 4,
+        "level": "A2",
+        "topic": "Present tense",
+        "grammar_point": "perfect_tense_basics",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "Local grammar check recognized the target structure clearly."
+      },
+      {
+        "task_id": 5,
+        "level": "A2",
+        "topic": "Basic prepositions",
+        "grammar_point": "accusative_with_movement",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "Local grammar check recognized the target structure clearly."
+      },
+      {
+        "task_id": 6,
+        "level": "A2",
+        "topic": "Sentence structure",
+        "grammar_point": "comparatives_basics",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The answer did not clearly show the target grammar in the local diagnostic check."
+      },
+      {
+        "task_id": 7,
+        "level": "B1",
+        "topic": "Sentence structure",
+        "grammar_point": "subordinate_clause_weil",
+        "score_label": "FULL",
+        "score_value": 2,
+        "correct": true,
+        "rationale": "The student correctly formed a subordinate clause with \"weil\" placing the conjugated verb \"mag\" at the end of the clause, demonstrating the target grammar structure."
+      },
+      {
+        "task_id": 8,
+        "level": "B1",
+        "topic": "Modal verbs",
+        "grammar_point": "konjunktiv_ii_basics",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The student did not attempt to use Konjunktiv II or produce any German, instead responding in English that they do not know the answer."
+      },
+      {
+        "task_id": 9,
+        "level": "B1",
+        "topic": "Sentence structure",
+        "grammar_point": "relative_clauses_basics",
+        "score_label": "FAIL",
+        "score_value": 0,
+        "correct": false,
+        "rationale": "The student did not attempt to use a relative pronoun or construct a relative clause, instead indicating lack of knowledge."
+      }
+    ],
+    "learner_profile": {
+      "current_goal": "So how to start now.",
+      "recent_topics": [
+        "Sentence structure"
+      ],
+      "recent_grammar_points": [
+        "negation_kein"
+      ],
+      "weak_topics": [
+        "A2 Sentence structure",
+        "B1 Modal verbs",
+        "B1 Sentence structure"
+      ],
+      "strong_topics": [
+        "A1 Articles",
+        "A1 Negation",
+        "A1 Present tense",
+        "A2 Present tense",
+        "A2 Basic prepositions",
+        "B1 Sentence structure"
+      ],
+      "syllabus_history": [
+        "A2-01"
+      ],
+      "current_syllabus_lesson": {
+        "mode": "guided",
+        "lesson_id": "A2-01",
+        "level": "A2",
+        "title": "Lebenslinien",
+        "primary_topics": [
+          "Personal pronouns",
+          "Present tense",
+          "Sentence structure",
+          "Negation"
+        ],
+        "search_query": "A2 German grammar Personal pronouns Present tense Sentence structure Negation Lebenslinien",
+        "reason": "Matched current A2 topic: Sentence structure."
+      },
+      "level_progression_history": [],
+      "preferred_language_support": "mixed",
+      "last_goal_type": "practice"
+    },
+    "grammar_point_mastery": {
+      "indefinite_articles_ein_eine_einen": 1,
+      "negation_kein": 1,
+      "present_tense_basic_verbs": 1,
+      "perfect_tense_basics": 1,
+      "accusative_with_movement": 1,
+      "comparatives_basics": 0,
+      "subordinate_clause_weil": 1,
+      "konjunktiv_ii_basics": 0,
+      "relative_clauses_basics": 0
+    },
+    "level_source": "diagnostic",
+    "level_confidence": "high",
+    "level_change_rationale": "Fallback parser found no level-change intent.",
+    "level_progression_status": {
+      "level": "A2",
+      "required_points": [
+        "perfect_tense_basics",
+        "accusative_with_movement",
+        "comparatives_basics"
+      ],
+      "mastered_points": [],
+      "missing_points": [
+        "perfect_tense_basics",
+        "accusative_with_movement",
+        "comparatives_basics"
+      ],
+      "ready_for_promotion": false
+    },
+    "level_promoted": false,
+    "phase": "tutoring",
+    "intro_shown": true,
+    "display_name": "Kavya",
+    "learner_id": "kavya",
+    "last_active": "2026-05-11T12:27:17.495271"
   }
 }
